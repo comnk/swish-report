@@ -13,6 +13,6 @@ big_fundamental = [
 ][0]
 big_fundamental
 
-draft = drafthistory.DraftHistory(season_year_nullable='2024') 
+draft = drafthistory.DraftHistory(season_year_nullable='2023') 
 draft_data = draft.get_data_frames()[0]
 print(draft_data)
