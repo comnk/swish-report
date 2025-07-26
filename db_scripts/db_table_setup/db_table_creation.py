@@ -29,29 +29,35 @@ cursor = cnx.cursor()
 
 # Create table with proper schema
 cursor.execute("""
-CREATE TABLE IF NOT EXISTS player_ranking_links (
-    player_id INT AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS player_rankings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    source VARCHAR(50) NOT NULL,
+    class_year VARCHAR(10),
+    player_rank INT,
     name VARCHAR(255) NOT NULL,
-    normalized_name VARCHAR(255) NOT NULL,
-    high_school_class_year INT,
-    link_247sports VARCHAR(500),
-    link_rivals VARCHAR(500),
-    link_espn VARCHAR(500),
+    link TEXT,
+    position VARCHAR(50),
+    height VARCHAR(20),
+    weight VARCHAR(20),
+    school_name VARCHAR(255),
+    school_city VARCHAR(100),
+    school_state VARCHAR(50),
+    location_type VARCHAR(50),
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-)
-""")
-
-cursor.execute("""
-CREATE TABLE player_analysis (
-    analysis_id INT AUTO_INCREMENT PRIMARY KEY,
-    player_id INT,
-    source ENUM('nbadraftnet','nbadraftroom'),
-    heading TEXT,
-    paragraph LONGTEXT,
-    scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (player_id) REFERENCES players(player_id)
 );
 """)
+
+# cursor.execute("""
+# CREATE TABLE player_analysis (
+#     analysis_id INT AUTO_INCREMENT PRIMARY KEY,
+#     player_id INT,
+#     source ENUM('nbadraftnet','nbadraftroom'),
+#     heading TEXT,
+#     paragraph LONGTEXT,
+#     scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+#     FOREIGN KEY (player_id) REFERENCES players(player_id)
+# );
+# """)
 
 print("Database and table created successfully!")
 cnx.close()

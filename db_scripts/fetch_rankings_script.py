@@ -26,7 +26,7 @@ def fetch_247_sports_info(class_year):
     rankings_247 = []
     
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto(f'https://247sports.com/season/{class_year}-basketball/recruitrankings/', wait_until='domcontentloaded', timeout=60000)
         page.wait_for_selector("li.rankings-page__list-item")
@@ -59,18 +59,19 @@ def fetch_247_sports_info(class_year):
             metrics = metrics_div.inner_text().strip() if metrics_div else None
             height, weight = parse_247_metrics(metrics)
 
-            rankings_247({
+            rankings_247.append({
                 "source": "247sports",
-                "rank": rank,
+                "class_year": class_year,
+                "player_rank": rank,
                 "name": player_name,
                 "link": player_link,
                 "position": position,
+                "height": height,
+                "weight": weight,
                 "school_name": school_name,
                 "school_city": school_city,
                 "school_state": school_state,
-                "location_type": "schooltown",
-                "height": height,
-                "weight": weight
+                "location_type": "schooltown"
             })
 
         browser.close()
@@ -81,7 +82,7 @@ def fetch_espn_info(class_year):
     espn_rankings = []
     
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto(f'https://www.espn.com/college-sports/basketball/recruiting/rankings/scnext300boys/_/class/{class_year}/order/true', wait_until='domcontentloaded', timeout=60000)
         page.wait_for_selector("tr.oddrow")
@@ -112,16 +113,17 @@ def fetch_espn_info(class_year):
 
             espn_rankings.append({
                 "source": "espn",
-                "rank": rank,
+                "class_year": class_year,
+                "player_rank": rank,
                 "name": player_name,
                 "link": player_link,
                 "position": position,
+                "height": height,
+                "weight": weight,
                 "school_name": school_name,
                 "school_city": school_city,
                 "school_state": school_state,
-                "location_type": "schooltown",
-                "height": height,
-                "weight": weight
+                "location_type": "hometown",
             })
         
         browser.close()
@@ -133,7 +135,7 @@ def fetch_rivals_info(class_year):
     rivals_players = []
     
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto(f"https://www.on3.com/rivals/rankings/player/basketball/{class_year}/", wait_until='domcontentloaded', timeout=60000)
         
@@ -192,23 +194,19 @@ def fetch_rivals_info(class_year):
             
             rivals_players.append({
                 "source": "rivals",
-                "rank": rank,
+                "class_year": class_year,
+                "player_rank": rank,
                 "name": player_name,
                 "link": player_link,
                 "position": position,
+                "height": height,
+                "weight": weight,
                 "school_name": school_name,
                 "school_city": school_city,
                 "school_state": school_state,
-                "location_type": "hometown",
-                "height": height,
-                "weight": weight
+                "location_type": "hometown"
             })
             
         browser.close()
     
     return rivals_players
-
-
-rankings_247 = fetch_247_sports_info(2027)
-espn_rankings = fetch_espn_info(2027)
-rivals_rankings = fetch_rivals_info(2027)
