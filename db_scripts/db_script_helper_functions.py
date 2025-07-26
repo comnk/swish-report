@@ -76,3 +76,20 @@ def parse_247_metrics(metrics: str) -> Tuple[Optional[str], Optional[str]]:
     else:
         # If format is unexpected, treat entire string as height
         return (metrics, None)
+
+def normalize_espn_height(raw_height: str) -> str:
+    if not raw_height:
+        return ""
+    h = raw_height.strip()
+    # normalize curly quotes/backticks
+    h = h.replace("’", "'").replace("‘", "'").replace("`", "'")
+    # replace all single quotes with dash
+    h = h.replace("'", "-")
+    # remove any double quotes
+    h = h.replace('"', "")
+    # collapse multiple consecutive dashes
+    while "--" in h:
+        h = h.replace("--", "-")
+    # strip trailing dashes just in case
+    h = h.rstrip("-")
+    return h

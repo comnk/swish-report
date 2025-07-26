@@ -1,7 +1,7 @@
 import mysql.connector
 from playwright.sync_api import sync_playwright
 
-from db_script_helper_functions import parse_school, parse_247_metrics
+from db_script_helper_functions import parse_school, parse_247_metrics, normalize_espn_height
 
 import os
 
@@ -108,6 +108,7 @@ def fetch_espn_info(class_year):
             school_city_text = tds[3].inner_text().strip()
             school_name, school_city, school_state = parse_school(source='espn', high_school_raw=school_city_text)
             height = tds[4].inner_text().strip()
+            height = normalize_espn_height(height)
 
             weight = tds[5].inner_text().strip()
 
