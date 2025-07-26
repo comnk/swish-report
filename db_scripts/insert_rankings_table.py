@@ -2,7 +2,7 @@ import mysql.connector
 import os
 from dotenv import load_dotenv
 from datetime import datetime, date
-from fetch_rankings_script import fetch_247_sports_info, fetch_espn_info, fetch_rivals_info
+from fetch_rankings_current_script import fetch_247_sports_info, fetch_espn_info, fetch_rivals_info
 
 dotenv_path = '../../.env'
 load_dotenv(dotenv_path)
@@ -43,8 +43,8 @@ cursor = cnx.cursor()
 
 insert_sql = """
 INSERT INTO player_rankings
-(source, class_year, player_rank, name, link, position, height, weight, school_name, school_city, school_state, location_type, is_finalized)
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+(source, class_year, player_rank, player_grade, stars, name, link, position, height, weight, school_name, city, state, location_type, is_finalized)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 """
 
 def prepare_data(records, source_name, class_year):
@@ -59,14 +59,16 @@ def prepare_data(records, source_name, class_year):
             source_name,
             str(class_year),
             rec.get('player_rank'),
+            rec.get('player_grade'),
+            rec.get('stars'),
             rec.get('name'),
             rec.get('link'),
             rec.get('position'),
             rec.get('height'),
             rec.get('weight'),
             rec.get('school_name'),
-            rec.get('school_city'),
-            rec.get('school_state'),
+            rec.get('city'),
+            rec.get('state'),
             rec.get('location_type'),
             is_rankings_finalized(class_year)
         ))

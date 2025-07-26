@@ -1,7 +1,7 @@
 import mysql.connector
 from playwright.sync_api import sync_playwright
 
-from db_script_helper_functions import parse_school, parse_247_metrics, normalize_espn_height
+from db_script_helper_functions import parse_school, parse_247_metrics, normalize_espn_height, get_espn_star_count
 
 import os
 
@@ -45,10 +45,15 @@ def fetch_247_sports_info(class_year):
             rank_div = wrapper.query_selector(".rank-column .primary")
             rank = rank_div.inner_text().strip() if rank_div else None
 
+            # player grade and stars
+            rating_div = wrapper.query_selector(".rating")
+            stars = len(rating_div.query_selector_all(".rankings-page__star-and-score span.icon-starsolid.yellow"))
+            grade = int(rating_div.query_selector(".score").inner_text().strip())
+
             # school / metadata
             meta_span = wrapper.query_selector(".meta")
             school_meta = meta_span.inner_text().strip() if meta_span else None
-            school_name, school_city, school_state = parse_school(source='247sports', high_school_raw=school_meta)
+            school_name, city, state = parse_school(source='247sports', high_school_raw=school_meta)
             
             # position
             pos_div = wrapper.query_selector(".position")
@@ -63,14 +68,16 @@ def fetch_247_sports_info(class_year):
                 "source": "247sports",
                 "class_year": class_year,
                 "player_rank": rank,
+                "player_grade": grade,
+                "stars": stars,
                 "name": player_name,
                 "link": player_link,
                 "position": position,
                 "height": height,
                 "weight": weight,
                 "school_name": school_name,
-                "school_city": school_city,
-                "school_state": school_state,
+                "city": city,
+                "state": state,
                 "location_type": "schooltown"
             })
 
@@ -105,25 +112,32 @@ def fetch_espn_info(class_year):
 
             position = tds[2].inner_text().strip()
 
-            school_city_text = tds[3].inner_text().strip()
-            school_name, school_city, school_state = parse_school(source='espn', high_school_raw=school_city_text)
+            city_text = tds[3].inner_text().strip()
+            school_name, city, state = parse_school(source='espn', high_school_raw=city_text)
             height = tds[4].inner_text().strip()
             height = normalize_espn_height(height)
 
             weight = tds[5].inner_text().strip()
+            
+            stars = tds[6].query_selector("li.star")
+            stars = get_espn_star_count(stars.get_attribute("class") or "")
+            
+            grade = tds[7].inner_text().strip()
 
             espn_rankings.append({
                 "source": "espn",
                 "class_year": class_year,
                 "player_rank": rank,
+                "player_grade": grade,
+                "stars": stars,
                 "name": player_name,
                 "link": player_link,
                 "position": position,
                 "height": height,
                 "weight": weight,
                 "school_name": school_name,
-                "school_city": school_city,
-                "school_state": school_state,
+                "city": city,
+                "state": state,
                 "location_type": "hometown",
             })
         
@@ -148,6 +162,13 @@ def fetch_rivals_info(class_year):
             player_link = a_tag.get_attribute("href") if a_tag else None
             
             rank = wrapper.query_selector('dl[aria-labelledby="rank"]').query_selector("dd").inner_text()
+            
+            rating = wrapper.query_selector('div[aria-labelledby="rating"]')
+            grade = int(rating.query_selector('span[data-ui="player-rating"]').inner_text())
+            
+            stars = rating.query_selector('span[data-ui="player-stars"]')
+            stars = len(stars.query_selector_all('svg:has(path[fill="#F2C94C"])'))
+
             position = wrapper.query_selector('div[aria-labelledby="position"]').inner_text().strip()
             
             if player_link and player_link.startswith("/"):
@@ -168,7 +189,7 @@ def fetch_rivals_info(class_year):
                     elif label == "Hometown":
                         hometown_text = dd.inner_text().strip()
 
-                school_name, school_city, school_state = parse_school(
+                school_name, city, state = parse_school(
                     source="rivals",
                     high_school_raw=high_school_text,
                     hometown_raw=hometown_text
@@ -197,14 +218,16 @@ def fetch_rivals_info(class_year):
                 "source": "rivals",
                 "class_year": class_year,
                 "player_rank": rank,
+                "player_grade": grade,
+                "stars": stars,
                 "name": player_name,
                 "link": player_link,
                 "position": position,
                 "height": height,
                 "weight": weight,
                 "school_name": school_name,
-                "school_city": school_city,
-                "school_state": school_state,
+                "city": city,
+                "state": state,
                 "location_type": "hometown"
             })
             

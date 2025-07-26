@@ -93,3 +93,32 @@ def normalize_espn_height(raw_height: str) -> str:
     # strip trailing dashes just in case
     h = h.rstrip("-")
     return h
+
+WORD_TO_NUM = {
+    "one":   1,
+    "two":   2,
+    "three": 3,
+    "four":  4,
+    "five":  5,
+}
+
+def get_espn_star_count(class_str: str) -> int:
+    WORD_TO_NUM = {
+        "one":   1,
+        "two":   2,
+        "three": 3,
+        "four":  4,
+        "five":  5,
+    }
+    """
+    Given a class attribute like "star five-star", returns 5.
+    """
+    # find any token ending with "-star"
+    m = re.search(r"\b([a-z]+)-star\b", class_str)
+    if not m:
+        return 0   # or None, if you prefer
+    word = m.group(1).lower()
+    return WORD_TO_NUM.get(word, 0)
+
+def get_rivals_star_count():
+    pass
