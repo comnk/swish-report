@@ -13,8 +13,6 @@ DB_USER = os.getenv('DB_USER')
 DB_PASSWORD = os.getenv('DB_PASSWORD')
 DB_HOST=os.getenv('DB_HOST')
 
-print(DB_USER, DB_PASSWORD, DB_HOST)
-
 # Connect without a database first to create one
 cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST)
 cursor = cnx.cursor()
@@ -43,6 +41,7 @@ CREATE TABLE IF NOT EXISTS player_rankings (
     school_city VARCHAR(100),
     school_state VARCHAR(50),
     location_type VARCHAR(50),
+    is_finalized BOOLEAN DEFAULT FALSE,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 """)

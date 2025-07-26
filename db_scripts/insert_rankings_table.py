@@ -1,6 +1,7 @@
 import mysql.connector
 import os
 from dotenv import load_dotenv
+from datetime import datetime, date
 from fetch_rankings_script import fetch_247_sports_info, fetch_espn_info, fetch_rivals_info
 
 dotenv_path = '../../.env'
@@ -9,6 +10,21 @@ load_dotenv(dotenv_path)
 DB_USER = os.getenv('DB_USER')
 DB_PASSWORD = os.getenv('DB_PASSWORD')
 DB_HOST = os.getenv('DB_HOST')
+
+FINALIZATION_MONTH = 5
+FINALIZATION_DAY = 7
+
+def is_rankings_finalized(class_year: int) -> bool:
+    today = datetime.today().date()
+
+    if class_year < today.year:
+        return True
+
+    if class_year == today.year:
+        cutoff = date(today.year, FINALIZATION_MONTH, FINALIZATION_DAY)
+        return today >= cutoff
+
+    return False
 
 rankings_247 = fetch_247_sports_info(2027)
 print("Successfully loaded 247 rankings")
@@ -27,8 +43,8 @@ cursor = cnx.cursor()
 
 insert_sql = """
 INSERT INTO player_rankings
-(source, class_year, player_rank, name, link, position, height, weight, school_name, school_city, school_state, location_type)
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+(source, class_year, player_rank, name, link, position, height, weight, school_name, school_city, school_state, location_type, is_finalized)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 """
 
 def prepare_data(records, source_name, class_year):
@@ -51,7 +67,8 @@ def prepare_data(records, source_name, class_year):
             rec.get('school_name'),
             rec.get('school_city'),
             rec.get('school_state'),
-            rec.get('location_type')
+            rec.get('location_type'),
+            is_rankings_finalized(class_year)
         ))
     return prepared
 
