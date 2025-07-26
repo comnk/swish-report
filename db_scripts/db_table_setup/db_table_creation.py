@@ -32,6 +32,7 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS player_ranking_links (
     player_id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
+    normalized_name VARCHAR(255) NOT NULL,
     high_school_class_year INT,
     link_247sports VARCHAR(500),
     link_rivals VARCHAR(500),
