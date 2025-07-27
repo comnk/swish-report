@@ -1,4 +1,5 @@
 import re
+from datetime import date, datetime
 from typing import Tuple, Optional
 
 def parse_school(source: str,
@@ -119,6 +120,21 @@ def get_espn_star_count(class_str: str) -> int:
         return 0   # or None, if you prefer
     word = m.group(1).lower()
     return WORD_TO_NUM.get(word, 0)
+
+FINALIZATION_MONTH = 5
+FINALIZATION_DAY = 7
+
+def is_rankings_finalized(class_year: int) -> bool:
+    today = datetime.today().date()
+
+    if class_year < today.year:
+        return True
+
+    if class_year == today.year:
+        cutoff = date(today.year, FINALIZATION_MONTH, FINALIZATION_DAY)
+        return today >= cutoff
+
+    return False
 
 def get_rivals_star_count():
     pass

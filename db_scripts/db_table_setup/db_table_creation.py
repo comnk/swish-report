@@ -48,11 +48,12 @@ CREATE TABLE IF NOT EXISTS player_rankings (
 );
 """)
 
-# cursor.execute("""
-# CREATE TABLE player_analysis (
+cursor.execute("""
+# CREATE TABLE IF NOT EXISTS player_ranking_history (
 #     analysis_id INT AUTO_INCREMENT PRIMARY KEY,
-#     player_id INT,
-#     source ENUM('nbadraftnet','nbadraftroom'),
+#     name VARCHAR(255) NOT NULL,
+#     class_year VARCHAR(10),
+#     source VARCHAR(50) NOT NULL,
 #     heading TEXT,
 #     paragraph LONGTEXT,
 #     scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

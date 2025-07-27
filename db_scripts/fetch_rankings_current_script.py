@@ -1,24 +1,6 @@
-import mysql.connector
 from playwright.sync_api import sync_playwright
 
-from db_script_helper_functions import parse_school, parse_247_metrics, normalize_espn_height, get_espn_star_count
-
-import os
-
-from dotenv import load_dotenv
-
-dotenv_path = '../.env'
-
-# Load the .env file
-load_dotenv(dotenv_path)
-
-# Access environment variables
-DB_USER = os.getenv('DB_USER')
-DB_PASSWORD = os.getenv('DB_PASSWORD')
-DB_HOST=os.getenv('DB_HOST')
-
-cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST)
-cursorObject = cnx.cursor()
+from db_script_helper_functions import parse_school, parse_247_metrics, normalize_espn_height, get_espn_star_count, is_rankings_finalized
 
 years = range(2020, 2028)
 
@@ -43,7 +25,7 @@ def fetch_247_sports_info(class_year):
 
             # rank
             rank_div = wrapper.query_selector(".rank-column .primary")
-            rank = rank_div.inner_text().strip() if rank_div else None
+            player_rank = rank_div.inner_text().strip() if rank_div else None
 
             # player grade and stars
             rating_div = wrapper.query_selector(".rating")
@@ -64,22 +46,23 @@ def fetch_247_sports_info(class_year):
             metrics = metrics_div.inner_text().strip() if metrics_div else None
             height, weight = parse_247_metrics(metrics)
 
-            rankings_247.append({
-                "source": "247sports",
-                "class_year": class_year,
-                "player_rank": rank,
-                "player_grade": grade,
-                "stars": stars,
-                "name": player_name,
-                "link": player_link,
-                "position": position,
-                "height": height,
-                "weight": weight,
-                "school_name": school_name,
-                "city": city,
-                "state": state,
-                "location_type": "schooltown"
-            })
+            rankings_247.append((
+                "247sports",
+                str(class_year),
+                player_rank,
+                grade,
+                stars,
+                player_name,
+                player_link,
+                position,
+                height,
+                weight,
+                school_name,
+                city,
+                state,
+                "schooltown",
+                is_rankings_finalized(class_year)
+            ))
 
         browser.close()
     
@@ -102,7 +85,7 @@ def fetch_espn_info(class_year):
             if len(tds) < 6:
                 continue
 
-            rank = tds[0].inner_text().strip()
+            player_rank = tds[0].inner_text().strip()
 
             a_tag = tds[1].query_selector("a")
             player_name = a_tag.inner_text().strip() if a_tag else None
@@ -124,22 +107,23 @@ def fetch_espn_info(class_year):
             
             grade = tds[7].inner_text().strip()
 
-            espn_rankings.append({
-                "source": "espn",
-                "class_year": class_year,
-                "player_rank": rank,
-                "player_grade": grade,
-                "stars": stars,
-                "name": player_name,
-                "link": player_link,
-                "position": position,
-                "height": height,
-                "weight": weight,
-                "school_name": school_name,
-                "city": city,
-                "state": state,
-                "location_type": "hometown",
-            })
+            espn_rankings.append((
+                "espn",
+                str(class_year),
+                player_rank,
+                grade,
+                stars,
+                player_name,
+                player_link,
+                position,
+                height,
+                weight,
+                school_name,
+                city,
+                state,
+                "hometown",
+                is_rankings_finalized(class_year)
+            ))
         
         browser.close()
         
@@ -161,7 +145,7 @@ def fetch_rivals_info(class_year):
             player_name = a_tag.inner_text().strip() if a_tag else None
             player_link = a_tag.get_attribute("href") if a_tag else None
             
-            rank = wrapper.query_selector('dl[aria-labelledby="rank"]').query_selector("dd").inner_text()
+            player_rank = wrapper.query_selector('dl[aria-labelledby="rank"]').query_selector("dd").inner_text()
             
             rating = wrapper.query_selector('div[aria-labelledby="rating"]')
             grade = int(rating.query_selector('span[data-ui="player-rating"]').inner_text())
@@ -172,7 +156,7 @@ def fetch_rivals_info(class_year):
             position = wrapper.query_selector('div[aria-labelledby="position"]').inner_text().strip()
             
             if player_link and player_link.startswith("/"):
-                player_link = "https://www.on3.com/" + player_link
+                player_link = "https://www.on3.com" + player_link
 
             location_dl = wrapper.query_selector('dl.PlayerRankingsItem_homeContainer__CLv44')
             
@@ -214,22 +198,23 @@ def fetch_rivals_info(class_year):
                     elif "weight" in label:
                         weight = value
             
-            rivals_players.append({
-                "source": "rivals",
-                "class_year": class_year,
-                "player_rank": rank,
-                "player_grade": grade,
-                "stars": stars,
-                "name": player_name,
-                "link": player_link,
-                "position": position,
-                "height": height,
-                "weight": weight,
-                "school_name": school_name,
-                "city": city,
-                "state": state,
-                "location_type": "hometown"
-            })
+            rivals_players.append((
+                "rivals",
+                str(class_year),
+                player_rank,
+                grade,
+                stars,
+                player_name,
+                player_link,
+                position,
+                height,
+                weight,
+                school_name,
+                city,
+                state,
+                "hometown",
+                is_rankings_finalized(class_year)
+            ))
             
         browser.close()
     
