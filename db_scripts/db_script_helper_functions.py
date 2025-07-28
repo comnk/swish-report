@@ -1,10 +1,11 @@
 import re
 from datetime import date, datetime
 from typing import Tuple, Optional
+from rapidfuzz import fuzz
 
 def parse_school(source: str,
-                 high_school_raw: str = "",
-                 hometown_raw: str = "") -> Tuple[str, Optional[str], Optional[str]]:
+                high_school_raw: str = "",
+                hometown_raw: str = "") -> Tuple[str, Optional[str], Optional[str]]:
     """
     Normalize school info into (school_name, city, state).
 
@@ -138,3 +139,34 @@ def is_rankings_finalized(class_year: int) -> bool:
 
 def get_rivals_star_count():
     pass
+
+def normalize_name(name: str) -> str:
+    if not name:
+        return ""
+    name = name.lower()
+    # remove jr, sr, ii, iii
+    name = re.sub(r'\b(jr|sr|ii|iii)\b', '', name)
+    # remove punctuation
+    name = re.sub(r'[^a-z\s]', '', name)
+    # collapse spaces
+    name = re.sub(r'\s+', ' ', name)
+    return name.strip()
+
+def find_matching_player(cursor, class_year, candidate_name, threshold=82.5):
+    """
+    Returns player_uid if a sufficiently similar player exists, else None.
+    """
+    cursor.execute("SELECT player_uid, full_name FROM players WHERE class_year=%s", (class_year,))
+    existing = cursor.fetchall()
+
+    norm_candidate = normalize_name(candidate_name)
+    best_match = None
+    best_score = 0
+
+    for player_uid, full_name in existing:
+        score = fuzz.ratio(norm_candidate, normalize_name(full_name))
+        if score > best_score and score >= threshold:
+            best_score = score
+            best_match = player_uid
+
+    return best_match

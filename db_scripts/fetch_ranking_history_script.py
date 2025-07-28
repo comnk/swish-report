@@ -56,6 +56,15 @@ def fetch_players_247_ranking_history(class_year):
     return class_year_history
 
 def fetch_player_rivals_ranking_history(class_year):
-    pass
+    class_year_history = []
+    
+    select_sql = """
+    SELECT name, link FROM player_rankings WHERE class_year=%s AND source=%s
+    """
+    
+    cursor.execute(select_sql, (class_year,'rivals'))
+    rows = cursor.fetchall()
+    
+    return class_year_history
 
 fetch_players_247_ranking_history(2027)

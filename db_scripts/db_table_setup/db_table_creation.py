@@ -25,16 +25,26 @@ cnx.close()
 cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, database='swish_report')
 cursor = cnx.cursor()
 
-# Create table with proper schema
 cursor.execute("""
-CREATE TABLE IF NOT EXISTS player_rankings (
+CREATE TABLE IF NOT EXISTS players (
+    player_uid INT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(255) NOT NULL,
+    class_year INT NULL,
+    current_level ENUM('HS','COLLEGE','NBA', 'NONE') NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS high_school_player_rankings (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    player_uid INT NOT NULL,
     source VARCHAR(50) NOT NULL,
     class_year VARCHAR(10),
     player_rank INT,
     player_grade INT,
     stars INT,
-    name VARCHAR(255) NOT NULL,
     link TEXT,
     position VARCHAR(50),
     height VARCHAR(20),
@@ -44,22 +54,22 @@ CREATE TABLE IF NOT EXISTS player_rankings (
     state VARCHAR(50),
     location_type VARCHAR(50),
     is_finalized BOOLEAN DEFAULT FALSE,
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (player_uid) REFERENCES players(player_uid)
 );
 """)
 
 cursor.execute("""
-# CREATE TABLE IF NOT EXISTS player_ranking_history (
-#     analysis_id INT AUTO_INCREMENT PRIMARY KEY,
-#     name VARCHAR(255) NOT NULL,
-#     class_year VARCHAR(10),
-#     source VARCHAR(50) NOT NULL,
-#     heading TEXT,
-#     paragraph LONGTEXT,
-#     scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-#     FOREIGN KEY (player_id) REFERENCES players(player_id)
-# );
-# """)
+CREATE TABLE IF NOT EXISTS high_school_player_ranking_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    player_uid INT NOT NULL,
+    snapshot_date DATE NOT NULL,
+    source ENUM('247sports') NOT NULL,
+    player_rank INT,
+    player_rating INT,
+    FOREIGN KEY (player_uid) REFERENCES players(player_uid)
+);
+""")
 
 print("Database and table created successfully!")
 cnx.close()
