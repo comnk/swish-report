@@ -71,5 +71,16 @@ CREATE TABLE IF NOT EXISTS high_school_player_ranking_history (
 );
 """)
 
-print("Database and table created successfully!")
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS high_school_player_evaluations (
+    evaluation_id INT AUTO_INCREMENT PRIMARY KEY,
+    player_id INT NOT NULL,
+    evaluator_name VARCHAR(255),
+    evaluation_date DATE,
+    notes MEDIUMTEXT NOT NULL,
+    FOREIGN KEY (player_id) REFERENCES high_school_player_rankings(player_id)
+);
+""")
+
+print("Database and tables created successfully!")
 cnx.close()

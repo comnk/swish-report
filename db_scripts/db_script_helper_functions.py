@@ -152,7 +152,7 @@ def normalize_name(name: str) -> str:
     name = re.sub(r'\s+', ' ', name)
     return name.strip()
 
-def find_matching_player(cursor, class_year, candidate_name, threshold=82.5):
+def find_matching_player(cursor, class_year, candidate_name, threshold=83):
     """
     Returns player_uid if a sufficiently similar player exists, else None.
     """
