@@ -3,6 +3,13 @@ from datetime import date, datetime
 from typing import Tuple, Optional
 from rapidfuzz import fuzz
 
+from playwright.sync_api import sync_playwright
+
+def launch_browser(headless=True):
+    playwright = sync_playwright().start()
+    browser = playwright.chromium.launch(headless=headless)
+    return playwright, browser
+
 def parse_school(source: str,
                 high_school_raw: str = "",
                 hometown_raw: str = "") -> Tuple[str, Optional[str], Optional[str]]:
@@ -148,7 +155,6 @@ def normalize_name(name: str) -> str:
     name = re.sub(r'\b(jr|sr|ii|iii)\b', '', name)
     # remove punctuation
     name = re.sub(r'[^a-z\s]', '', name)
-    # collapse spaces
     name = re.sub(r'\s+', ' ', name)
     return name.strip()
 
@@ -170,3 +176,15 @@ def find_matching_player(cursor, class_year, candidate_name, threshold=83):
             best_match = player_uid
 
     return best_match
+
+def clean_player_rank(rank):
+    try:
+        if rank is None:
+            return None
+        if isinstance(rank, int):
+            return rank
+
+        rank_int = int(str(rank).strip())
+        return rank_int
+    except (ValueError, TypeError):
+        return None

@@ -37,12 +37,23 @@ CREATE TABLE IF NOT EXISTS players (
 """)
 
 cursor.execute("""
+CREATE TABLE IF NOT EXISTS nba_draft_evaluations (
+    evaluation_id INT AUTO_INCREMENT PRIMARY KEY,
+    player_id INT NOT NULL,
+    source VARCHAR(255) NOT NULL,
+    notes MEDIUMTEXT NOT NULL,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (player_id) REFERENCES players(player_uid)
+);
+""")
+
+cursor.execute("""
 CREATE TABLE IF NOT EXISTS high_school_player_rankings (
     id INT AUTO_INCREMENT PRIMARY KEY,
     player_uid INT NOT NULL,
     source VARCHAR(50) NOT NULL,
     class_year VARCHAR(10),
-    player_rank INT,
+    player_rank INT DEFAULT NULL,
     player_grade INT,
     stars INT,
     link TEXT,
@@ -65,7 +76,7 @@ CREATE TABLE IF NOT EXISTS high_school_player_ranking_history (
     player_uid INT NOT NULL,
     snapshot_date DATE NOT NULL,
     source ENUM('247sports') NOT NULL,
-    player_rank INT,
+    player_rank INT DEFAULT NULL,
     player_rating INT,
     FOREIGN KEY (player_uid) REFERENCES players(player_uid)
 );
@@ -78,18 +89,7 @@ CREATE TABLE IF NOT EXISTS high_school_player_evaluations (
     evaluator_name VARCHAR(255),
     evaluation_date DATE,
     notes MEDIUMTEXT NOT NULL,
-    FOREIGN KEY (player_id) REFERENCES high_school_player_rankings(player_id)
-);
-""")
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS nba_draft_evaluations (
-    evaluation_id INT AUTO_INCREMENT PRIMARY KEY,
-    player_id INT NOT NULL,
-    source VARCHAR(255) NOT NULL,
-    notes MEDIUMTEXT NOT NULL,
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (player_id) REFERENCES player_rankings(player_id)
+    FOREIGN KEY (player_id) REFERENCES high_school_player_rankings(id)
 );
 """)
 
