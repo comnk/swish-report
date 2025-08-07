@@ -1,14 +1,12 @@
+import asyncio
 import mysql.connector
 import os
-
 from dotenv import load_dotenv
 from celery import shared_task
 from fetch_rankings_current_script import fetch_247_sports_info, fetch_espn_info, fetch_rivals_info
 from db_script_helper_functions import find_matching_player, launch_browser, clean_player_rank
 
-@shared_task
-def load_current_player_rankings():
-    # Load environment variables
+async def load_current_player_rankings_async():
     dotenv_path = '../.env'
     load_dotenv(dotenv_path)
 
@@ -16,41 +14,32 @@ def load_current_player_rankings():
     DB_PASSWORD = os.getenv('DB_PASSWORD')
     DB_HOST = os.getenv('DB_HOST')
 
-    # Years to fetch
     class_years = [2025, 2026, 2027]
 
-    # ----------------------------
-    # ⚡ Serial Fetching Phase
-    # ----------------------------
     print("🚀 Starting serial data collection...")
 
-    playwright, browser = launch_browser(headless=True)
+    playwright, browser = await launch_browser(headless=True)
 
     rankings_247_all = []
     rankings_espn_all = []
     rankings_rivals_all = []
 
     for year in class_years:
-        rankings_247_all.append(fetch_247_sports_info(year, browser))
-        rankings_espn_all.append(fetch_espn_info(year, browser))
-        rankings_rivals_all.append(fetch_rivals_info(year, browser))
+        rankings_247_all.append(await fetch_247_sports_info(year, browser))
+        rankings_espn_all.append(await fetch_espn_info(year, browser))
+        rankings_rivals_all.append(await fetch_rivals_info(year, browser))
 
-    browser.close()
-    playwright.stop()
+    await browser.close()
+    await playwright.stop()
 
-    # Flatten the results
     data_247 = [record for year_data in rankings_247_all for record in year_data]
     data_espn = [record for year_data in rankings_espn_all for record in year_data]
     data_rivals = [record for year_data in rankings_rivals_all for record in year_data]
 
     print("✅ Rankings fetched from all sources.")
 
-    # Combine all rankings
     all_rankings = data_247 + data_espn + data_rivals
 
-    # ----------------------------
-    # 🗃️ Database Insertion Phase
-    # ----------------------------
     cnx = mysql.connector.connect(
         user=DB_USER,
         password=DB_PASSWORD,
@@ -70,17 +59,12 @@ def load_current_player_rankings():
     VALUES (%s, %s, %s)
     """
 
-    # ----------------------------
-    # 🔄 Process and Insert Records
-    # ----------------------------
-
     for record in all_rankings:
         (source, class_year, player_rank, grade, stars, player_name,
         player_link, position, height, weight,
         school_name, city, state, location_type, finalized) = record
 
         player_uid = find_matching_player(cursor, class_year, player_name)
-
         player_rank = clean_player_rank(player_rank)
 
         if not player_uid:
@@ -93,12 +77,18 @@ def load_current_player_rankings():
             school_name, city, state, location_type, finalized
         ))
 
-    # Finalize DB writes
     cnx.commit()
     cursor.close()
     cnx.close()
 
     print("✅ All rankings inserted into database.")
 
-if __name__ == "__main__":
-    load_current_player_rankings.delay()
+
+async def main():
+    result = await load_current_player_rankings_async()
+    print(result)
+
+asyncio.run(main())
+# @shared_task
+# def load_current_player_rankings():
+#     asyncio.run(load_current_player_rankings_async())

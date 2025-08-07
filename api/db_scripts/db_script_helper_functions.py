@@ -3,11 +3,11 @@ from datetime import date, datetime
 from typing import Tuple, Optional
 from rapidfuzz import fuzz
 
-from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
 
-def launch_browser(headless=True):
-    playwright = sync_playwright().start()
-    browser = playwright.chromium.launch(headless=headless)
+async def launch_browser(headless=True):
+    playwright = await async_playwright().start()
+    browser = await playwright.chromium.launch(headless=headless)
     return playwright, browser
 
 def parse_school(source: str,
@@ -102,14 +102,6 @@ def normalize_espn_height(raw_height: str) -> str:
     # strip trailing dashes just in case
     h = h.rstrip("-")
     return h
-
-WORD_TO_NUM = {
-    "one":   1,
-    "two":   2,
-    "three": 3,
-    "four":  4,
-    "five":  5,
-}
 
 def get_espn_star_count(class_str: str) -> int:
     WORD_TO_NUM = {
