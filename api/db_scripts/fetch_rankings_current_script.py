@@ -89,63 +89,66 @@ async def fetch_espn_info(class_year, browser):
     page = await browser.new_page()
 
     try:
-        await page.goto(
-            f'https://www.espn.com/college-sports/basketball/recruiting/rankings/scnext300boys/_/class/{class_year}/order/true',
-            wait_until='domcontentloaded',
-            timeout=60000
-        )
-        await page.wait_for_selector("tr.oddrow")
+        url = f'https://www.espn.com/college-sports/basketball/recruiting/rankings/scnext300boys/_/class/{class_year}/order/true'
+        await page.goto(url, wait_until='domcontentloaded', timeout=60000)
+        await page.wait_for_selector("tr.oddrow, tr.evenrow", timeout=10000)
 
-        wrappers = await page.query_selector_all("tr.oddrow, tr.evenrow")
+        # Extract all rows' data in one evaluate call
+        rows_data = await page.evaluate('''() => {
+            const rows = Array.from(document.querySelectorAll('tr.oddrow, tr.evenrow'));
+            return rows.map(row => {
+                const cells = Array.from(row.querySelectorAll('td'));
+                if (cells.length < 8) return null;
 
-        for wrapper in wrappers:
-            tds = await wrapper.query_selector_all("td")
-            if len(tds) < 8:
-                continue
+                const playerRank = cells[0]?.innerText.trim() || null;
 
-            player_rank = await tds[0].inner_text()
-            player_rank = player_rank.strip() if player_rank else None
+                const aTag = cells[1]?.querySelector('a');
+                const playerName = aTag ? aTag.innerText.trim() : null;
+                let playerLink = aTag ? aTag.getAttribute('href') : null;
+                if (playerLink && playerLink.startsWith('/')) {
+                    playerLink = 'https://www.espn.com' + playerLink;
+                }
 
-            # Player name & profile link
-            a_tag = await tds[1].query_selector("a")
-            player_name = await a_tag.inner_text() if a_tag else None
-            if player_name:
-                player_name = player_name.strip()
-            player_link = await a_tag.get_attribute("href") if a_tag else None
-            if player_link and player_link.startswith("/"):
-                player_link = "https://www.espn.com" + player_link
+                const position = cells[2]?.innerText.trim() || null;
+                const schoolRaw = cells[3]?.innerText.trim() || "";
+                const heightRaw = cells[4]?.innerText.trim() || "";
+                const weight = cells[5]?.innerText.trim() || "";
 
-            position = await tds[2].inner_text()
-            position = position.strip() if position else None
+                const starLi = cells[6]?.querySelector('li.star');
+                const starClass = starLi ? starLi.getAttribute('class') : "";
+                
+                const grade = cells[7]?.innerText.trim() || "";
 
-            school_raw = await tds[3].inner_text()
-            school_raw = school_raw.strip() if school_raw else ""
-            school_name, city, state = parse_school(source='espn', high_school_raw=school_raw)
+                return {
+                    playerRank,
+                    playerName,
+                    playerLink,
+                    position,
+                    schoolRaw,
+                    heightRaw,
+                    weight,
+                    starClass,
+                    grade
+                };
+            }).filter(item => item !== null);
+        }''')
 
-            height_raw = await tds[4].inner_text()
-            height = normalize_espn_height(height_raw.strip() if height_raw else "")
-
-            weight_raw = await tds[5].inner_text()
-            weight = weight_raw.strip() if weight_raw else ""
-
-            star_li = await tds[6].query_selector("li.star")
-            star_class = await star_li.get_attribute("class") if star_li else ""
-            stars = get_espn_star_count(star_class)
-
-            grade_raw = await tds[7].inner_text()
-            grade = grade_raw.strip() if grade_raw else ""
+        for data in rows_data:
+            school_name, city, state = parse_school(source='espn', high_school_raw=data['schoolRaw'])
+            height = normalize_espn_height(data['heightRaw'])
+            stars = get_espn_star_count(data['starClass'])
 
             espn_rankings.append((
                 "espn",
                 str(class_year),
-                player_rank,
-                grade,
+                data['playerRank'],
+                data['grade'],
                 stars,
-                player_name,
-                player_link,
-                position,
+                data['playerName'],
+                data['playerLink'],
+                data['position'],
                 height,
-                weight,
+                data['weight'],
                 school_name,
                 city,
                 state,
@@ -166,109 +169,106 @@ async def fetch_rivals_info(class_year, browser):
     page = await browser.new_page()
 
     try:
-        await page.goto(
-            f"https://www.on3.com/rivals/rankings/player/basketball/{class_year}/",
-            wait_until='domcontentloaded',
-            timeout=60000
-        )
+        url = f"https://www.on3.com/rivals/rankings/player/basketball/{class_year}/"
+        await page.goto(url, wait_until='domcontentloaded', timeout=60000)
+        await page.wait_for_selector(".PlayerRankingsItem_block__kuO8v", timeout=10000)
 
-        wrappers = await page.query_selector_all(".PlayerRankingsItem_block__kuO8v")
+        # Extract all player data in a single evaluate call
+        players_data = await page.evaluate('''() => {
+            const players = Array.from(document.querySelectorAll(".PlayerRankingsItem_block__kuO8v"));
+            return players.map(wrapper => {
+                const aTag = wrapper.querySelector("a");
+                const playerName = aTag ? aTag.innerText.trim() : null;
+                let playerLink = aTag ? aTag.getAttribute("href") : null;
+                if (playerLink && playerLink.startsWith("/")) {
+                    playerLink = "https://www.on3.com" + playerLink;
+                }
 
-        for wrapper in wrappers:
-            a_tag = await wrapper.query_selector("a")
-            player_name = await a_tag.inner_text() if a_tag else None
-            if player_name:
-                player_name = player_name.strip()
-            player_link = await a_tag.get_attribute("href") if a_tag else None
-            if player_link and player_link.startswith("/"):
-                player_link = "https://www.on3.com" + player_link
+                const rankDd = wrapper.querySelector('dl[aria-labelledby="rank"] dd');
+                const playerRank = rankDd ? rankDd.innerText.trim() : null;
 
-            # Rank
-            rank_dd = await wrapper.query_selector('dl[aria-labelledby="rank"] dd')
-            player_rank = await rank_dd.inner_text() if rank_dd else None
-            if player_rank:
-                player_rank = player_rank.strip()
+                const ratingDiv = wrapper.querySelector('div[aria-labelledby="rating"]');
+                let grade = null, stars = 0;
+                if (ratingDiv) {
+                    const ratingSpan = ratingDiv.querySelector('span[data-ui="player-rating"]');
+                    grade = ratingSpan ? parseInt(ratingSpan.innerText.trim()) : null;
 
-            # Rating & Stars
-            rating = await wrapper.query_selector('div[aria-labelledby="rating"]')
-            grade = stars = None
-            if rating:
-                player_rating_span = await rating.query_selector('span[data-ui="player-rating"]')
-                grade_text = await player_rating_span.inner_text() if player_rating_span else None
-                grade = int(grade_text.strip()) if grade_text else None
+                    const starsSpan = ratingDiv.querySelector('span[data-ui="player-stars"]');
+                    if (starsSpan) {
+                        const starSvgs = starsSpan.querySelectorAll('svg:has(path[fill="#F2C94C"])');
+                        stars = starSvgs.length;
+                    }
+                }
 
-                stars_span = await rating.query_selector('span[data-ui="player-stars"]')
-                if stars_span:
-                    star_svgs = await stars_span.query_selector_all('svg:has(path[fill="#F2C94C"])')
-                    stars = len(star_svgs)
-                else:
-                    stars = 0
-            else:
-                grade = None
-                stars = 0
+                const positionDiv = wrapper.querySelector('div[aria-labelledby="position"]');
+                const position = positionDiv ? positionDiv.innerText.trim() : null;
 
-            # Position
-            position_div = await wrapper.query_selector('div[aria-labelledby="position"]')
-            position = await position_div.inner_text() if position_div else None
-            if position:
-                position = position.strip()
+                let highSchoolText = "";
+                let hometownText = "";
+                const locationDl = wrapper.querySelector('dl.PlayerRankingsItem_homeContainer__CLv44');
+                if (locationDl) {
+                    const dts = Array.from(locationDl.querySelectorAll("dt"));
+                    const dds = Array.from(locationDl.querySelectorAll("dd"));
+                    for (let i = 0; i < dts.length; i++) {
+                        const label = dts[i].innerText.trim();
+                        if (label === "High School") {
+                            const hsA = dds[i].querySelector("a");
+                            highSchoolText = hsA ? hsA.innerText.trim() : dds[i].innerText.trim();
+                        } else if (label === "Hometown") {
+                            hometownText = dds[i].innerText.trim();
+                        }
+                    }
+                }
 
-            # High school + hometown → parse into city/state/school
-            location_dl = await wrapper.query_selector('dl.PlayerRankingsItem_homeContainer__CLv44')
-            high_school_text = ""
-            hometown_text = ""
-            if location_dl:
-                dts = await location_dl.query_selector_all("dt")
-                dds = await location_dl.query_selector_all("dd")
-                for dt, dd in zip(dts, dds):
-                    label = await dt.inner_text()
-                    label = label.strip() if label else ""
-                    if label == "High School":
-                        hs_a = await dd.query_selector("a")
-                        if hs_a:
-                            high_school_text = await hs_a.inner_text()
-                            high_school_text = high_school_text.strip() if high_school_text else ""
-                        else:
-                            high_school_text = await dd.inner_text()
-                            high_school_text = high_school_text.strip() if high_school_text else ""
-                    elif label == "Hometown":
-                        hometown_text = await dd.inner_text()
-                        hometown_text = hometown_text.strip() if hometown_text else ""
+                let height = null, weight = null;
+                const vitalsDl = wrapper.querySelector('dl.PlayerRankingsItem_vitalsContainer__XYfbI');
+                if (vitalsDl) {
+                    const dtElements = Array.from(vitalsDl.querySelectorAll('dt'));
+                    const ddElements = Array.from(vitalsDl.querySelectorAll('dd'));
+                    for (let i = 0; i < dtElements.length; i++) {
+                        const label = dtElements[i].innerText.trim().toLowerCase();
+                        const value = ddElements[i] ? ddElements[i].innerText.trim() : "";
+                        if (label.includes("height")) {
+                            height = value;
+                        } else if (label.includes("weight")) {
+                            weight = value;
+                        }
+                    }
+                }
 
+                return {
+                    playerName,
+                    playerLink,
+                    playerRank,
+                    grade,
+                    stars,
+                    position,
+                    highSchoolText,
+                    hometownText,
+                    height,
+                    weight
+                };
+            });
+        }''')
+
+        for p in players_data:
             school_name, city, state = parse_school(
                 source="rivals",
-                high_school_raw=high_school_text,
-                hometown_raw=hometown_text
+                high_school_raw=p['highSchoolText'],
+                hometown_raw=p['hometownText']
             )
 
-            # Vitals (height, weight)
-            vitals_dl = await wrapper.query_selector('dl.PlayerRankingsItem_vitalsContainer__XYfbI')
-            height = weight = None
-            if vitals_dl:
-                dt_elements = await vitals_dl.query_selector_all('dt')
-                dd_elements = await vitals_dl.query_selector_all('dd')
-                for i, dt_el in enumerate(dt_elements):
-                    label = await dt_el.inner_text()
-                    label = label.strip().lower() if label else ""
-                    value = await dd_elements[i].inner_text() if i < len(dd_elements) else ""
-                    value = value.strip() if value else ""
-                    if "height" in label:
-                        height = value
-                    elif "weight" in label:
-                        weight = value
-
-            # Append data
             rivals_players.append((
                 "rivals",
                 str(class_year),
-                player_rank,
-                grade,
-                stars,
-                player_name,
-                player_link,
-                position,
-                height,
-                weight,
+                p['playerRank'],
+                p['grade'],
+                p['stars'],
+                p['playerName'],
+                p['playerLink'],
+                p['position'],
+                p['height'],
+                p['weight'],
                 school_name,
                 city,
                 state,
