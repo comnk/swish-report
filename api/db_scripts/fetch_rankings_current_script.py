@@ -1,59 +1,59 @@
 from db_script_helper_functions import parse_school, parse_247_metrics, normalize_espn_height, get_espn_star_count, is_rankings_finalized
 
-async def fetch_247_sports_info(class_year, browser):
+async def fetch_247_sports_info(class_years, browser):
     rankings_247 = []
     page = await browser.new_page()
 
     try:
-        url = f"https://247sports.com/season/{class_year}-basketball/recruitrankings/"
-        await page.goto(url, wait_until="domcontentloaded", timeout=60000)
-        await page.wait_for_selector("li.rankings-page__list-item", timeout=5000)
+        for class_year in class_years:
+            url = f'https://247sports.com/season/{class_year}-basketball/recruitrankings/'
+            await page.goto(url, wait_until='domcontentloaded', timeout=60000)
+            await page.wait_for_selector("li.rankings-page__list-item", timeout=5000)
 
-        players_data = await page.evaluate('''() => {
-            return Array.from(document.querySelectorAll('li.rankings-page__list-item')).map(wrapper => {
-                const aTag = wrapper.querySelector('a');
-                let playerLink = aTag?.getAttribute('href') || null;
-                if (playerLink?.startsWith('/')) {
-                    playerLink = 'https://247sports.com' + playerLink;
-                }
+            players_data = await page.evaluate('''() => {
+                return Array.from(document.querySelectorAll('li.rankings-page__list-item')).map(wrapper => {
+                    const aTag = wrapper.querySelector('a');
+                    let playerLink = aTag?.getAttribute('href') || null;
+                    if (playerLink?.startsWith('/')) {
+                        playerLink = 'https://247sports.com' + playerLink;
+                    }
+                    return {
+                        playerName: aTag?.innerText.trim() || null,
+                        playerLink,
+                        playerRank: wrapper.querySelector('.rank-column .primary')?.innerText.trim() || null,
+                        stars: wrapper.querySelectorAll('.rankings-page__star-and-score span.icon-starsolid.yellow').length || 0,
+                        grade: parseInt(wrapper.querySelector('.rankings-page__star-and-score .score')?.innerText.trim()) || null,
+                        schoolMeta: wrapper.querySelector('.meta')?.innerText.trim() || null,
+                        position: wrapper.querySelector('.position')?.innerText.trim() || null,
+                        metrics: wrapper.querySelector('.metrics')?.innerText.trim() || null
+                    };
+                });
+            }''')
 
-                return {
-                    playerName: aTag?.innerText.trim() || null,
-                    playerLink,
-                    playerRank: wrapper.querySelector('.rank-column .primary')?.innerText.trim() || null,
-                    stars: wrapper.querySelectorAll('.rankings-page__star-and-score span.icon-starsolid.yellow').length || 0,
-                    grade: parseInt(wrapper.querySelector('.rankings-page__star-and-score .score')?.innerText.trim()) || null,
-                    schoolMeta: wrapper.querySelector('.meta')?.innerText.trim() || null,
-                    position: wrapper.querySelector('.position')?.innerText.trim() || null,
-                    metrics: wrapper.querySelector('.metrics')?.innerText.trim() || null
-                };
-            });
-        }''')
+            for p in players_data:
+                school_name, city, state = parse_school('247sports', p['schoolMeta'])
+                height, weight = parse_247_metrics(p['metrics'])
 
-        for p in players_data:
-            school_name, city, state = parse_school('247sports', p['schoolMeta'])
-            height, weight = parse_247_metrics(p['metrics'])
-
-            rankings_247.append((
-                "247sports",
-                str(class_year),
-                p['playerRank'],
-                p['grade'],
-                p['stars'],
-                p['playerName'],
-                p['playerLink'],
-                p['position'],
-                height,
-                weight,
-                school_name,
-                city,
-                state,
-                "schooltown",
-                is_rankings_finalized(class_year)
-            ))
+                rankings_247.append((
+                    "247sports",
+                    str(class_year),
+                    p['playerRank'],
+                    p['grade'],
+                    p['stars'],
+                    p['playerName'],
+                    p['playerLink'],
+                    p['position'],
+                    height,
+                    weight,
+                    school_name,
+                    city,
+                    state,
+                    "schooltown",
+                    is_rankings_finalized(class_year)
+                ))
 
     except Exception as e:
-        print(f"⚠️ Error scraping 247sports {class_year}: {e}")
+        print(f"⚠️ Error scraping 247sports: {e}")
     finally:
         await page.close()
 

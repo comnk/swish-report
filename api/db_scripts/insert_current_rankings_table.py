@@ -20,8 +20,11 @@ async def load_current_player_rankings_async():
 
     playwright, browser = await launch_browser(headless=True)
 
-    rankings_247_all, rankings_espn_all, rankings_rivals_all = await asyncio.gather(
-        asyncio.gather(*(fetch_247_sports_info(year, browser) for year in class_years)),
+    rankings_247_all = await asyncio.gather(
+        fetch_247_sports_info(class_years, browser),
+    )
+
+    rankings_espn_all, rankings_rivals_all = await asyncio.gather(
         asyncio.gather(*(fetch_espn_info(year, browser) for year in class_years)),
         asyncio.gather(*(fetch_rivals_info(year, browser) for year in class_years))
     )
