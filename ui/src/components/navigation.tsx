@@ -11,7 +11,6 @@ export default function Navigation() {
         { name: "High School", href: "/high-school" },
         { name: "College", href: "/college" },
         { name: "NBA", href: "/nba" },
-        { name: "Draft Hub", href: "/draft" },
     ];
 
     return (
