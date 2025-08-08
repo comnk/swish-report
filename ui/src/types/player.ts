@@ -1,3 +1,18 @@
+export interface HighSchoolPlayer {
+    id: string;
+    name: string;
+    position: string;
+    height: string;
+    weight: string;
+    school: string;
+    class?: string; // For high school and college
+    overallRating: number;
+    strengths: string[];
+    weaknesses: string[];
+    aiAnalysis: string;
+    draftProjection?: string;
+}
+
 export interface Player {
     id: string;
     name: string;

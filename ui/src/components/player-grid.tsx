@@ -1,22 +1,25 @@
 "use client";
 
-import { Player } from "@/types/player";
+import { HighSchoolPlayer, Player } from "@/types/player";
 import { Star, TrendingUp, Award } from "lucide-react";
 
 interface PlayerGridProps {
-    players: Player[];
+    players: Player[] | HighSchoolPlayer[];
     level: "high-school" | "college" | "nba";
+}
+
+function shuffleArray<T>(array: T[]): T[] {
+    const arr = [...array]; // clone to avoid mutating original
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
 }
 
 export default function PlayerGrid({ players, level }: PlayerGridProps) {
     const getPlayerStats = (player: Player) => {
         switch (level) {
-        case "high-school":
-            return [
-            { label: "PPG", value: player.stats.points },
-            { label: "RPG", value: player.stats.rebounds },
-            { label: "APG", value: player.stats.assists }
-            ];
         case "college":
             return [
             { label: "PPG", value: player.stats.points },
@@ -39,9 +42,12 @@ export default function PlayerGrid({ players, level }: PlayerGridProps) {
         return "text-slate-600 bg-slate-100";
     };
 
+    // Shuffle players before rendering
+    const shuffledPlayers = shuffleArray(players);
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {players.map((player) => (
+        {shuffledPlayers.map((player) => (
             <div
             key={player.id}
             className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 card-hover cursor-pointer"
@@ -64,16 +70,6 @@ export default function PlayerGrid({ players, level }: PlayerGridProps) {
                 <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getRatingColor(player.overallRating)}`}>
                 {player.overallRating}
                 </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-4">
-                {getPlayerStats(player).map((stat, index) => (
-                <div key={index} className="text-center">
-                    <div className="text-lg font-bold text-slate-900">{stat.value}</div>
-                    <div className="text-xs text-slate-600">{stat.label}</div>
-                </div>
-                ))}
             </div>
 
             {/* Strengths */}

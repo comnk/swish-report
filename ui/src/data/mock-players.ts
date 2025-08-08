@@ -1,6 +1,6 @@
-import { Player } from "@/types/player";
+import { HighSchoolPlayer, Player } from "@/types/player";
 
-export const mockHighSchoolPlayers: Player[] = [
+export const mockHighSchoolPlayers: HighSchoolPlayer[] = [
     {
         id: "hs1",
         name: "Marcus Thompson",
@@ -10,13 +10,6 @@ export const mockHighSchoolPlayers: Player[] = [
         school: "Oak Hill Academy",
         class: "2024",
         overallRating: 94,
-        stats: {
-        points: 22.5,
-        rebounds: 4.8,
-        assists: 8.2,
-        fieldGoalPercentage: 48,
-        threePointPercentage: 38
-        },
         strengths: ["Court Vision", "Three-Point Shooting", "Leadership"],
         weaknesses: ["Defensive Consistency", "Turnovers"],
         aiAnalysis: "Elite floor general with exceptional basketball IQ. Projects as a lottery pick with immediate impact potential at the collegiate level.",
@@ -31,13 +24,6 @@ export const mockHighSchoolPlayers: Player[] = [
         school: "Montverde Academy",
         class: "2024",
         overallRating: 91,
-        stats: {
-        points: 19.3,
-        rebounds: 7.1,
-        assists: 3.4,
-        fieldGoalPercentage: 52,
-        threePointPercentage: 35
-        },
         strengths: ["Versatility", "Athleticism", "Rebounding"],
         weaknesses: ["Ball Handling", "Free Throw Shooting"],
         aiAnalysis: "Versatile wing with excellent size and athleticism. Strong two-way potential with continued development of perimeter skills.",
@@ -52,13 +38,6 @@ export const mockHighSchoolPlayers: Player[] = [
         school: "IMG Academy",
         class: "2025",
         overallRating: 88,
-        stats: {
-        points: 16.8,
-        rebounds: 11.2,
-        assists: 2.1,
-        fieldGoalPercentage: 58,
-        threePointPercentage: 28
-        },
         strengths: ["Shot Blocking", "Post Moves", "Rebounding"],
         weaknesses: ["Perimeter Defense", "Three-Point Range"],
         aiAnalysis: "Traditional big man with excellent rim protection. Needs to develop modern center skills but has solid fundamentals.",
