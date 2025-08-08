@@ -4,6 +4,9 @@ import mysql.connector
 from pydantic import BaseModel
 from typing import List
 
+import os
+from dotenv import load_dotenv
+
 app = FastAPI()
 
 app.add_middleware(
@@ -15,10 +18,17 @@ app.add_middleware(
 )
 
 def get_db_connection():
+    dotenv_path = '../.env'
+    load_dotenv(dotenv_path)
+
+    DB_USER = os.getenv('DB_USER')
+    DB_PASSWORD = os.getenv('DB_PASSWORD')
+    DB_HOST = os.getenv('DB_HOST')
+    
     return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="password",
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
         database='swish_report'
     )
 
