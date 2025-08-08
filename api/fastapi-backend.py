@@ -48,6 +48,9 @@ def get_highschool_prospects():
     INNER JOIN high_school_player_rankings AS hspr ON hspr.player_uid = p.player_uid
     WHERE hspr.source = '247sports';
     """
+    select_analysis_sql = """
+    SELECT * FROM ai_generated_high_school_evaluations;
+    """
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
