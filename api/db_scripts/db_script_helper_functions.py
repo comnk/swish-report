@@ -150,19 +150,17 @@ def normalize_name(name: str) -> str:
     name = re.sub(r'\s+', ' ', name)
     return name.strip()
 
-def find_matching_player(cursor, class_year, candidate_name, threshold=83):
+def find_matching_player(existing_players_by_year, class_year, candidate_name, threshold=83):
     """
+    existing_players_by_year: dict[class_year] = list of (player_uid, full_name)
     Returns player_uid if a sufficiently similar player exists, else None.
     """
-    cursor.execute("SELECT player_uid, full_name FROM players WHERE class_year=%s", (class_year,))
-    existing = cursor.fetchall()
-
     norm_candidate = normalize_name(candidate_name)
     best_match = None
     best_score = 0
 
-    for player_uid, full_name in existing:
-        score = fuzz.ratio(norm_candidate, normalize_name(full_name))
+    for player_uid, full_name in existing_players_by_year.get(class_year, []):
+        score = fuzz.token_set_ratio(norm_candidate, normalize_name(full_name))
         if score > best_score and score >= threshold:
             best_score = score
             best_match = player_uid

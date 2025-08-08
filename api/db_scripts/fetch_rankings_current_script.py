@@ -5,57 +5,33 @@ async def fetch_247_sports_info(class_year, browser):
     page = await browser.new_page()
 
     try:
-        url = f'https://247sports.com/season/{class_year}-basketball/recruitrankings/'
-        await page.goto(url, wait_until='domcontentloaded', timeout=60000)
-        await page.wait_for_selector("li.rankings-page__list-item", timeout=10000)
+        url = f"https://247sports.com/season/{class_year}-basketball/recruitrankings/"
+        await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+        await page.wait_for_selector("li.rankings-page__list-item", timeout=5000)
 
         players_data = await page.evaluate('''() => {
-            const items = Array.from(document.querySelectorAll('li.rankings-page__list-item'));
-            return items.map(wrapper => {
+            return Array.from(document.querySelectorAll('li.rankings-page__list-item')).map(wrapper => {
                 const aTag = wrapper.querySelector('a');
-                const playerName = aTag ? aTag.innerText.trim() : null;
-                let playerLink = aTag ? aTag.getAttribute('href') : null;
-                if (playerLink && playerLink.startsWith('/')) {
+                let playerLink = aTag?.getAttribute('href') || null;
+                if (playerLink?.startsWith('/')) {
                     playerLink = 'https://247sports.com' + playerLink;
                 }
 
-                const rankDiv = wrapper.querySelector('.rank-column .primary');
-                const playerRank = rankDiv ? rankDiv.innerText.trim() : null;
-
-                const ratingDiv = wrapper.querySelector('.rating');
-                let stars = 0, grade = null;
-                if (ratingDiv) {
-                    stars = ratingDiv.querySelectorAll('.rankings-page__star-and-score span.icon-starsolid.yellow').length;
-                    const scoreSpan = ratingDiv.querySelector('.score');
-                    if (scoreSpan) {
-                        grade = parseInt(scoreSpan.innerText.trim());
-                    }
-                }
-
-                const metaSpan = wrapper.querySelector('.meta');
-                const schoolMeta = metaSpan ? metaSpan.innerText.trim() : null;
-
-                const posDiv = wrapper.querySelector('.position');
-                const position = posDiv ? posDiv.innerText.trim() : null;
-
-                const metricsDiv = wrapper.querySelector('.metrics');
-                const metrics = metricsDiv ? metricsDiv.innerText.trim() : null;
-
                 return {
-                    playerName,
+                    playerName: aTag?.innerText.trim() || null,
                     playerLink,
-                    playerRank,
-                    stars,
-                    grade,
-                    schoolMeta,
-                    position,
-                    metrics
+                    playerRank: wrapper.querySelector('.rank-column .primary')?.innerText.trim() || null,
+                    stars: wrapper.querySelectorAll('.rankings-page__star-and-score span.icon-starsolid.yellow').length || 0,
+                    grade: parseInt(wrapper.querySelector('.rankings-page__star-and-score .score')?.innerText.trim()) || null,
+                    schoolMeta: wrapper.querySelector('.meta')?.innerText.trim() || null,
+                    position: wrapper.querySelector('.position')?.innerText.trim() || null,
+                    metrics: wrapper.querySelector('.metrics')?.innerText.trim() || null
                 };
             });
         }''')
 
         for p in players_data:
-            school_name, city, state = parse_school(source='247sports', high_school_raw=p['schoolMeta'])
+            school_name, city, state = parse_school('247sports', p['schoolMeta'])
             height, weight = parse_247_metrics(p['metrics'])
 
             rankings_247.append((

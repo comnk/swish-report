@@ -20,14 +20,11 @@ async def load_current_player_rankings_async():
 
     playwright, browser = await launch_browser(headless=True)
 
-    rankings_247_all = []
-    rankings_espn_all = []
-    rankings_rivals_all = []
-
-    for year in class_years:
-        rankings_247_all.append(await fetch_247_sports_info(year, browser))
-        rankings_espn_all.append(await fetch_espn_info(year, browser))
-        rankings_rivals_all.append(await fetch_rivals_info(year, browser))
+    rankings_247_all, rankings_espn_all, rankings_rivals_all = await asyncio.gather(
+        asyncio.gather(*(fetch_247_sports_info(year, browser) for year in class_years)),
+        asyncio.gather(*(fetch_espn_info(year, browser) for year in class_years)),
+        asyncio.gather(*(fetch_rivals_info(year, browser) for year in class_years))
+    )
 
     await browser.close()
     await playwright.stop()
@@ -59,23 +56,35 @@ async def load_current_player_rankings_async():
     VALUES (%s, %s, %s)
     """
 
-    for record in all_rankings:
-        (source, class_year, player_rank, grade, stars, player_name,
-        player_link, position, height, weight,
-        school_name, city, state, location_type, finalized) = record
+    # Step 1: Fetch all existing players per class_year (to avoid many DB queries)
+    existing_players_by_year = {}
+    for year in class_years:
+        cursor.execute("SELECT player_uid, full_name FROM players WHERE class_year=%s", (year,))
+        existing_players_by_year[year] = cursor.fetchall()
 
-        player_uid = find_matching_player(cursor, class_year, player_name)
-        player_rank = clean_player_rank(player_rank)
+    # Step 2: For each player in all_rankings, find matching player_uid or insert new player
+    ranking_rows = []
+    for (source, class_year, player_rank, grade, stars, player_name,
+        player_link, position, height, weight,
+        school_name, city, state, location_type, finalized) in all_rankings:
+
+        player_uid = find_matching_player(existing_players_by_year, int(class_year), player_name)
 
         if not player_uid:
             cursor.execute(insert_player_sql, (player_name, class_year, 'HS'))
             player_uid = cursor.lastrowid
+            # Add newly inserted player to cache for future matches in this run
+            existing_players_by_year.setdefault(int(class_year), []).append((player_uid, player_name))
 
-        cursor.execute(insert_rank_sql, (
-            player_uid, source, class_year, player_rank, grade, stars,
-            player_link, position, height, weight,
+        ranking_rows.append((
+            player_uid, source, class_year, clean_player_rank(player_rank),
+            grade, stars, player_link, position, height, weight,
             school_name, city, state, location_type, finalized
         ))
+
+    # Step 3: Bulk insert rankings
+    if ranking_rows:
+        cursor.executemany(insert_rank_sql, ranking_rows)
 
     cnx.commit()
     cursor.close()
