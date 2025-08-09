@@ -48,7 +48,7 @@ export default function PlayerSearch({
             case "high-school":
                 return {
                     position: ["PG", "SG", "SF", "PF", "C"],
-                    class: ["2024", "2025", "2026", "2027"],
+                    class: ["2025", "2026", "2027"],
                     stars: ["5-Star", "4-Star", "3-Star", "2-Star"],
                     state: ["CA", "TX", "FL", "NY", "GA", "NC", "IL", "OH"],
                 };

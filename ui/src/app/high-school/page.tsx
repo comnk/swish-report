@@ -39,6 +39,7 @@ export default function HighSchoolPage() {
           school: p.school_name,
           class: p.class_year?.toString() ?? "",
           height: p.height,
+          stars: p.stars ?? 4,
           overallRating: p.overallRating ?? 85,
           strengths: p.strengths ?? ["Scoring", "Athleticism", "Court Vision"],
           weaknesses: p.weaknesses ?? ["Defense", "Consistency"],

@@ -1,7 +1,8 @@
 "use client";
 
 import { HighSchoolPlayer, Player } from "@/types/player";
-import { Star, TrendingUp, Award } from "lucide-react";
+import { Star } from "lucide-react";
+import Link from "next/link";
 
 interface PlayerGridProps {
     players: Player[] | HighSchoolPlayer[];
@@ -65,6 +66,11 @@ export default function PlayerGrid({ players, level }: PlayerGridProps) {
                     <p className="text-slate-600 text-sm">
                     {player.position} | {player.height} | {player.school}
                     </p>
+                    <div className="flex items-center mt-1">
+                        {Array.from({ length: player.stars }).map((_, i) => (
+                            <Star key={i} className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                        ))}
+                    </div>
                 </div>
                 </div>
                 <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getRatingColor(player.overallRating)}`}>
@@ -100,12 +106,12 @@ export default function PlayerGrid({ players, level }: PlayerGridProps) {
 
             {/* Action Buttons */}
             <div className="flex gap-2">
-                <button className="flex-1 bg-orange-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors">
-                View Report
-                </button>
-                <button className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
-                <TrendingUp className="h-4 w-4" />
-                </button>
+                <Link
+                    href={`/high-school/${player.id}`}
+                    className="flex-1 bg-orange-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors text-center block"
+                >
+                    View Report
+                </Link>
             </div>
             </div>
         ))}

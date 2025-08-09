@@ -40,6 +40,7 @@ class Player(BaseModel):
     position: str
     school_name: str
     height: str
+    stars: int
     strengths: List[str]
     weaknesses: List[str]
     aiAnalysis: str
@@ -54,6 +55,7 @@ def get_highschool_prospects():
         hspr.position,
         hspr.school_name,
         hspr.height,
+        COALESCE(ai.stars, 4) AS stars,
         COALESCE(ai.rating, 85) AS overallRating,
         COALESCE(ai.strengths, JSON_ARRAY('Scoring', 'Athleticism', 'Court Vision')) AS strengths,
         COALESCE(ai.weaknesses, JSON_ARRAY('Defense', 'Consistency')) AS weaknesses,

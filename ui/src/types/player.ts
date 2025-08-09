@@ -6,6 +6,7 @@ export interface HighSchoolPlayer {
     weight: string;
     school: string;
     class?: string; // For high school and college
+    stars: number,
     overallRating: number;
     strengths: string[];
     weaknesses: string[];
@@ -22,6 +23,7 @@ export interface Player {
     school: string;
     class?: string; // For high school and college
     experience?: string; // For NBA
+    stars: number,
     overallRating: number;
     stats: {
         points: number;
