@@ -69,13 +69,21 @@ export default function HighSchoolPage() {
       player.school?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesFilters = Object.entries(selectedFilters).every(([key, value]) => {
-      if (!value) return true; // ignore empty filter
+      if (!value) return true; // skip empty filters
+
+      // Multi-select case (comma-separated string)
+      if (value.includes(",")) {
+        const selectedValues = value.split(",").map(v => v.trim().toLowerCase());
+        return selectedValues.includes(String((player as any)[key]).toLowerCase());
+      }
+
+      // Single value case
       return String((player as any)[key]).toLowerCase() === value.toLowerCase();
     });
 
     return matchesSearch && matchesFilters;
   });
-
+  
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <Navigation />
