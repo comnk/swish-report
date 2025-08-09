@@ -84,17 +84,6 @@ CREATE TABLE IF NOT EXISTS ai_generated_high_school_evaluations (
 """)
 
 cursor.execute("""
-CREATE TABLE IF NOT EXISTS nba_draft_evaluations (
-    evaluation_id INT AUTO_INCREMENT PRIMARY KEY,
-    player_id INT NOT NULL,
-    source VARCHAR(255) NOT NULL,
-    notes MEDIUMTEXT NOT NULL,
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (player_id) REFERENCES players(player_uid)
-);
-""")
-
-cursor.execute("""
 CREATE TABLE IF NOT EXISTS 247_high_school_player_evaluations (
     evaluation_id INT AUTO_INCREMENT PRIMARY KEY,
     player_id INT NOT NULL,

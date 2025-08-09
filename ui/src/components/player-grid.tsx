@@ -1,11 +1,11 @@
 "use client";
 
-import { HighSchoolPlayer, Player } from "@/types/player";
+import { HighSchoolPlayer, NBAPlayer } from "@/types/player";
 import { Star } from "lucide-react";
 import Link from "next/link";
 
 interface PlayerGridProps {
-    players: Player[] | HighSchoolPlayer[];
+    players: NBAPlayer[] | HighSchoolPlayer[];
     level: "high-school" | "college" | "nba";
 }
 
@@ -19,27 +19,29 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 export default function PlayerGrid({ players, level }: PlayerGridProps) {
-    const getPlayerStats = (player: Player) => {
+    const getPlayerStats = (player: NBAPlayer, level: "college" | "nba") => {
         switch (level) {
-        case "college":
+            case "college":
             return [
-            { label: "PPG", value: player.stats.points },
-            { label: "FG%", value: `${player.stats.fieldGoalPercentage}%` },
-            { label: "3P%", value: `${player.stats.threePointPercentage}%` }
+                { label: "PPG", value: player.stats?.points ?? "-" },
+                { label: "FG%", value: player.stats?.fieldGoalPercentage != null ? `${(player.stats.fieldGoalPercentage * 100).toFixed(1)}%` : "-" },
+                { label: "3P%", value: player.stats?.threePointPercentage != null ? `${(player.stats.threePointPercentage * 100).toFixed(1)}%` : "-" },
             ];
-        case "nba":
+            case "nba":
             return [
-            { label: "PPG", value: player.stats.points },
-            { label: "PER", value: player.stats.per },
-            { label: "WS", value: player.stats.winShares }
+                { label: "PPG", value: player.stats?.points ?? "-" },
+                { label: "PER", value: player.stats?.per ?? "-" },
+                { label: "WS", value: player.stats?.winShares ?? "-" },
             ];
+            default:
+            return [];
         }
     };
 
     const getRatingColor = (rating: number) => {
-        if (rating >= 90) return "text-green-600 bg-green-100";
-        if (rating >= 80) return "text-blue-600 bg-blue-100";
-        if (rating >= 70) return "text-orange-600 bg-orange-100";
+        if (rating >= 93) return "text-green-600 bg-green-100";
+        if (rating >= 90 && rating < 93) return "text-blue-600 bg-blue-100";
+        if (rating >= 80 && rating < 90) return "text-orange-600 bg-orange-100";
         return "text-slate-600 bg-slate-100";
     };
 
