@@ -1,23 +1,14 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from nba_api.stats.static import players
+from fastapi import APIRouter
+from typing import List
+from fastapi import HTTPException
 import mysql.connector
-from pydantic import BaseModel
 from typing import List
 
 import os
 import json
 from dotenv import load_dotenv
 
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+router = APIRouter()
 
 def get_db_connection():
     dotenv_path = '.env'
@@ -34,7 +25,7 @@ def get_db_connection():
         database='swish_report'
     )
 
-@app.get("/prospects/highschool", response_model=List[dict])
+@router.get("/prospects", response_model=List[dict])
 def get_highschool_prospects():
     select_sql = """
     SELECT
@@ -80,19 +71,3 @@ def get_highschool_prospects():
         return rows
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/players/nba", response_model=List[dict])
-def get_nba_prospects():
-    nba_players = players.get_players()
-    # Optionally filter fields if you want
-    simplified_players = [
-        {
-            "id": p["id"],
-            "full_name": p["full_name"],
-            # "first_name": p["first_name"],
-            # "last_name": p["last_name"],
-            # "is_active": p["is_active"],
-        }
-        for p in nba_players
-    ]
-    return simplified_players

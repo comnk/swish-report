@@ -27,7 +27,7 @@ export default function HighSchoolPage() {
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
-        const res = await fetch("http://localhost:8000/prospects/highschool");
+        const res = await fetch("http://localhost:8000/high-school/prospects");
         if (!res.ok) throw new Error(`Error ${res.status}`);
 
         const data = await res.json();

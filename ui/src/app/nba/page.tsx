@@ -25,15 +25,15 @@ export default function NBAPage() {
   useEffect(() => {
     async function fetchNBAPlayers() {
       try {
-        const res = await fetch("http://localhost:8000/players/nba");
+        const res = await fetch("http://localhost:8000/nba/players");
         if (!res.ok) throw new Error(`Error fetching NBA players: ${res.status}`);
-        const data: { full_name: string }[] = await res.json();
+        const data: { full_name: string, position: string, height: string }[] = await res.json();
 
         const mappedPlayers: NBAPlayer[] = data.map((p, i) => ({
           id: `nba-${i}`,
           name: p.full_name,
-          position: "SG",
-          height: "6'5\"",
+          position: p.position,
+          height: p.height,
           weight: "210 lbs",
           school: "N/A",
           experience: "Veteran",
