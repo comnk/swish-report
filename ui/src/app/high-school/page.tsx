@@ -6,8 +6,9 @@ import PlayerSearch from "@/components/player-search";
 import PlayerGrid from "@/components/player-grid";
 import { HighSchoolPlayer } from "@/types/player";
 
+// Fisher-Yates shuffle
 function shuffleArray<T>(array: T[]): T[] {
-  const arr = [...array]; // copy to avoid mutating original
+  const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
@@ -18,18 +19,19 @@ function shuffleArray<T>(array: T[]): T[] {
 export default function HighSchoolPage() {
   const [players, setPlayers] = useState<HighSchoolPlayer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(12);  // <-- new state
+  const [visibleCount, setVisibleCount] = useState(12);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
         const res = await fetch("http://localhost:8000/prospects/highschool");
-        if (!res.ok) {
-          throw new Error(`Error ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+
         const data = await res.json();
 
-        // Map backend data → HighSchoolPlayer structure
         const mapped: HighSchoolPlayer[] = data.map((p: any) => ({
           id: String(p.player_uid),
           name: p.full_name,
@@ -47,10 +49,7 @@ export default function HighSchoolPage() {
           weight: "",
         }));
 
-        // Shuffle players before setting
-        const shuffled = shuffleArray(mapped);
-
-        setPlayers(shuffled);
+        setPlayers(shuffleArray(mapped));
       } catch (error) {
         console.error("Failed to fetch high school prospects:", error);
       } finally {
@@ -61,10 +60,20 @@ export default function HighSchoolPage() {
     fetchPlayers();
   }, []);
 
-  // Handler for "Show More"
-  const handleShowMore = () => {
-    setVisibleCount((count) => count + 12);
-  };
+  // Filter logic
+  const filteredPlayers = players.filter((player) => {
+    const matchesSearch =
+      searchTerm === "" ||
+      player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      player.school?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesFilters = Object.entries(selectedFilters).every(([key, value]) => {
+      if (!value) return true; // ignore empty filter
+      return String((player as any)[key]).toLowerCase() === value.toLowerCase();
+    });
+
+    return matchesSearch && matchesFilters;
+  });
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -83,38 +92,24 @@ export default function HighSchoolPage() {
         </div>
 
         {/* Search and Filters */}
-        <PlayerSearch level="high-school" />
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-            <div className="text-2xl font-bold text-blue-600">2,847</div>
-            <div className="text-slate-600">Active Prospects</div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-            <div className="text-2xl font-bold text-green-600">156</div>
-            <div className="text-slate-600">5-Star Recruits</div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-            <div className="text-2xl font-bold text-orange-600">89%</div>
-            <div className="text-slate-600">College Bound</div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-            <div className="text-2xl font-bold text-purple-600">24</div>
-            <div className="text-slate-600">NBA Prospects</div>
-          </div>
-        </div>
+        <PlayerSearch
+          level="high-school"
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          selectedFilters={selectedFilters}
+          setSelectedFilters={setSelectedFilters}
+        />
 
         {/* Player Grid */}
         {loading ? (
           <p className="text-center">Loading...</p>
         ) : (
           <>
-            <PlayerGrid players={players.slice(0, visibleCount)} level="high-school" />
-            {visibleCount < players.length && (
+            <PlayerGrid players={filteredPlayers.slice(0, visibleCount)} level="high-school" />
+            {visibleCount < filteredPlayers.length && (
               <div className="text-center mt-8">
                 <button
-                  onClick={handleShowMore}
+                  onClick={() => setVisibleCount((count) => count + 12)}
                   className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                 >
                   Show More
