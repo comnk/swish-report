@@ -6,20 +6,28 @@ import PlayerSearch from "@/components/player-search";
 import PlayerGrid from "@/components/player-grid";
 import { HighSchoolPlayer } from "@/types/player";
 
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array]; // copy to avoid mutating original
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export default function HighSchoolPage() {
   const [players, setPlayers] = useState<HighSchoolPlayer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(12);  // <-- new state
 
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
-        const res = await fetch("http://localhost:8000/prospects/highschool"); // Adjust API URL if needed
+        const res = await fetch("http://localhost:8000/prospects/highschool");
         if (!res.ok) {
           throw new Error(`Error ${res.status}`);
         }
         const data = await res.json();
-
-        console.log(data[0]);
 
         // Map backend data → HighSchoolPlayer structure
         const mapped: HighSchoolPlayer[] = data.map((p: any) => ({
@@ -29,20 +37,20 @@ export default function HighSchoolPage() {
           school: p.school_name,
           class: p.class_year?.toString() ?? "",
           height: p.height,
-
-          // Hardcoded for now as your backend does not provide these
-          overallRating: 85,
-          strengths: ["Scoring", "Athleticism", "Court Vision"],
-          weaknesses: ["Defense", "Consistency"],
+          overallRating: p.overallRating ?? 85,
+          strengths: p.strengths ?? ["Scoring", "Athleticism", "Court Vision"],
+          weaknesses: p.weaknesses ?? ["Defense", "Consistency"],
           aiAnalysis:
+            p.aiAnalysis ??
             "A highly talented high school prospect with excellent scoring ability and strong athletic traits.",
           draftProjection: "Projected late first-round pick",
-
-          // Provide empty strings for any other required fields to avoid undefined
           weight: "",
         }));
 
-        setPlayers(mapped);
+        // Shuffle players before setting
+        const shuffled = shuffleArray(mapped);
+
+        setPlayers(shuffled);
       } catch (error) {
         console.error("Failed to fetch high school prospects:", error);
       } finally {
@@ -52,6 +60,11 @@ export default function HighSchoolPage() {
 
     fetchPlayers();
   }, []);
+
+  // Handler for "Show More"
+  const handleShowMore = () => {
+    setVisibleCount((count) => count + 12);
+  };
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -96,7 +109,19 @@ export default function HighSchoolPage() {
         {loading ? (
           <p className="text-center">Loading...</p>
         ) : (
-          <PlayerGrid players={players} level="high-school" />
+          <>
+            <PlayerGrid players={players.slice(0, visibleCount)} level="high-school" />
+            {visibleCount < players.length && (
+              <div className="text-center mt-8">
+                <button
+                  onClick={handleShowMore}
+                  className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                >
+                  Show More
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </main>

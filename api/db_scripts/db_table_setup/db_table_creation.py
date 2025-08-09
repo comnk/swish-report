@@ -75,6 +75,7 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS ai_generated_high_school_evaluations (
     ai_evaluation_id INT AUTO_INCREMENT PRIMARY KEY,
     player_id INT NOT NULL UNIQUE,
+    rating INT NOT NULL,
     strengths JSON NOT NULL,
     weaknesses JSON NOT NULL,
     ai_analysis MEDIUMTEXT NOT NULL

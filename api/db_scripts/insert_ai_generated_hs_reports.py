@@ -35,9 +35,10 @@ WHERE p.full_name = %s;
 
 insert_sql = """
 INSERT INTO ai_generated_high_school_evaluations
-    (player_id, strengths, weaknesses, ai_analysis)
-VALUES (%s, %s, %s, %s)
+    (player_id, rating, strengths, weaknesses, ai_analysis)
+VALUES (%s, %s, %s, %s, %s)
 ON DUPLICATE KEY UPDATE
+    rating = VALUES(rating),
     strengths = VALUES(strengths),
     weaknesses = VALUES(weaknesses),
     ai_analysis = VALUES(ai_analysis);
@@ -73,16 +74,16 @@ def fetch_player_rankings(player_name):
 system_prompt = """
 You are a basketball recruiting expert that scouts high school, college, and NBA talent.
 
-When the user asks for a scouting report, you must return a valid JSON object in this exact format:
+When the user asks for a scouting report, return a valid JSON object exactly like this:
 
 {
-    "rating": 85,
-    "strengths": ["list", "of", "strengths"] (list where each strength is at most 2 word tags to use in the frontend UI),
-    "weaknesses": ["list", "of", "weaknesses"] (list where each strength is at most 2 word tags to use in the frontend UI),
-    "aiAnalysis": "your detailed analysis of the player"
+    "rating": [player rating] (be extremely strict with these ratings, from a scale of 50 to 100),
+    "strengths": ["tag1", "tag2"],
+    "weaknesses": ["tag1", "tag2"],
+    "aiAnalysis": "Detailed analysis here."
 }
 
-Output only JSON, no extra text.
+Make sure to escape all double quotes inside strings (for example, 6'4\" instead of 6'4"). Output ONLY JSON without any extra text.
 """
 
 def clean_markdown_json(text):
@@ -95,21 +96,36 @@ def clean_markdown_json(text):
         return fenced_code.group(0).replace("```", "").strip()
     return text.strip()
 
+def fix_ai_analysis_quotes(text):
+    # Extract aiAnalysis content
+    match = re.search(r'"aiAnalysis":\s*"(.+?)"', text, re.DOTALL)
+    if not match:
+        return text  # no aiAnalysis found
+
+    ai_analysis = match.group(1)
+
+    # Escape double quotes that are not already escaped
+    fixed_analysis = ai_analysis.replace('\\"', '__escaped_quote__')  # temporarily hide escaped quotes
+    fixed_analysis = fixed_analysis.replace('"', '\\"')  # escape all double quotes
+    fixed_analysis = fixed_analysis.replace('__escaped_quote__', '\\"')  # restore original escaped quotes
+
+    # Replace in original text
+    fixed_text = text[:match.start(1)] + fixed_analysis + text[match.end(1):]
+    return fixed_text
+
 def parse_json_report(text):
     cleaned_text = clean_markdown_json(text)
     try:
         return json.loads(cleaned_text)
     except json.JSONDecodeError as e:
-        # Try replacing single quotes and removing trailing commas
-        fallback_text = cleaned_text.replace("'", '"')
-        if fallback_text.endswith(","):
-            fallback_text = fallback_text[:-1]
+        # Try to fix unescaped quotes in aiAnalysis
+        fixed_text = fix_ai_analysis_quotes(cleaned_text)
         try:
-            return json.loads(fallback_text)
-        except Exception:
-            print(f"JSON parse error even after cleanup: {e}\nOriginal text:\n{text}")
+            return json.loads(fixed_text)
+        except Exception as e2:
+            print(f"JSON parse error even after cleanup and fix: {e2}\nOriginal text:\n{text}")
             return None
-
+        
 def get_scouting_report_with_retry(player_name, ranking_info, retries=3):
     ranking_info_json = json.dumps(ranking_info, indent=2)
     user_content = f"""Here is the ranking info for {player_name}:
@@ -139,18 +155,32 @@ Please give me a scouting report for {player_name} in the JSON format I requeste
             else:
                 raise
 
-def insert_report(player_id, strengths, weaknesses, ai_analysis):
+def insert_report(player_id, rating, strengths, weaknesses, ai_analysis):
     conn = get_db_connection()
     cursor = conn.cursor()
     strengths_json = json.dumps(strengths)
     weaknesses_json = json.dumps(weaknesses)
-    cursor.execute(insert_sql, (player_id, strengths_json, weaknesses_json, ai_analysis))
+    cursor.execute(insert_sql, (player_id, rating, strengths_json, weaknesses_json, ai_analysis))
     cursor.close()
     conn.close()
+
+def ai_report_exists(player_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM ai_generated_high_school_evaluations WHERE player_id = %s LIMIT 1", (player_id,))
+    exists = cursor.fetchone() is not None
+    cursor.close()
+    conn.close()
+    return exists
 
 def safe_process_player(player):
     player_id = player['player_uid']
     player_name = player['full_name']
+
+    # Skip if AI report already exists for this player
+    if ai_report_exists(player_id):
+        print(f"Skipping {player_name}, AI report already exists.")
+        return player_name, True  # Treat as success so no retry needed
 
     # Fetch the player's ranking info for context
     ranking_info = fetch_player_rankings(player_name)
@@ -165,6 +195,7 @@ def safe_process_player(player):
 
         insert_report(
             player_id=player_id,
+            rating=parsed.get('rating', None),
             strengths=parsed.get('strengths', []),
             weaknesses=parsed.get('weaknesses', []),
             ai_analysis=parsed.get('aiAnalysis', '')
