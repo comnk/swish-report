@@ -35,3 +35,24 @@ CREATE TABLE IF NOT EXISTS nba_draft_evaluations (
     FOREIGN KEY (player_id) REFERENCES players(player_uid)
 );
 """)
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS nba_player_info (
+    player_uid INT PRIMARY KEY,
+    team VARCHAR(100) NULL,
+    position VARCHAR(50) NULL,
+    height VARCHAR(10) NULL,
+    weight INT NULL,
+    jersey_number INT NULL,
+    draft_year INT NULL,
+    draft_round INT NULL,
+    draft_pick INT NULL,
+    years_pro INT NULL,
+    college VARCHAR(255) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (player_uid) REFERENCES players(player_uid) ON DELETE CASCADE
+);
+""")
+
+print("Database and tables created successfully!")
+cnx.close()

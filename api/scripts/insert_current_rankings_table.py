@@ -2,7 +2,6 @@ import asyncio
 import mysql.connector
 import os
 from dotenv import load_dotenv
-from celery import shared_task
 from fetch_rankings_current_script import fetch_247_sports_info, fetch_espn_info, fetch_rivals_info
 from db_script_helper_functions import find_matching_player, launch_browser, clean_player_rank
 

@@ -3,7 +3,6 @@ from typing import List
 from nba_api.stats.static import players
 from nba_api.stats.endpoints import commonplayerinfo
 from pydantic import BaseModel
-from dotenv import load_dotenv
 
 import mysql.connector
 
@@ -15,7 +14,6 @@ def get_nba_prospects(page: int = 1, limit: int = 12):
     start = (page - 1) * limit
     end = start + limit
     selected_players = nba_players[start:end]
-    print("HEEEEEEE")
 
     player_data = []
     for p in selected_players:
@@ -28,7 +26,5 @@ def get_nba_prospects(page: int = 1, limit: int = 12):
             "position": info_data.get("POSITION"),
             "height": info_data.get("HEIGHT")
         })
-    
-    print(player_data)
 
     return player_data
