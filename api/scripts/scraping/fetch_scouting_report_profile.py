@@ -1,5 +1,4 @@
 from playwright.sync_api import sync_playwright
-import re
 
 def name_to_slug(name):
     parts = name.strip().split()
