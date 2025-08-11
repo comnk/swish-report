@@ -49,8 +49,9 @@ CREATE TABLE IF NOT EXISTS nba_player_info (
     draft_pick INT NULL,
     draft_year INT NULL,
     years_pro INT NULL,
-    accolades JSON NOT NULL,
-    colleges JSON NOT NULL,
+    accolades JSON NULL,
+    colleges JSON NULL,
+    high_schools JSON NULL,
     is_active BOOLEAN DEFAULT FALSE,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (player_uid) REFERENCES players(player_uid) ON DELETE CASCADE

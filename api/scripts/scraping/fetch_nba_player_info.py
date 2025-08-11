@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import asyncio
 import string
 import re
@@ -41,11 +43,35 @@ async def scrape_player(browser, data, delay_range=(2,5)):
                 .map(p => p.innerText.trim())
                 .filter(Boolean);
         }''')
+        
+        teams_data = await page.evaluate('''() => {
+            const uniDiv = document.querySelector("div.uni_holder");
+            if (!uniDiv) return [];
+            return Array.from(uniDiv.querySelectorAll("a"))
+                .map(a => a.getAttribute("data-tip"))
+                .filter(Boolean);
+        }''')
 
-        years_pro = draft_round = draft_pick = draft_year = None
+        team_names = []
+        for tip in teams_data:
+            parts = tip.split(",", 1)
+            if parts:
+                team_names.append(parts[0].strip())
+        
+        accolades = await page.evaluate('''() => {
+            const blingList = document.querySelector("ul#bling");
+            if (!blingList) return [];
+            return Array.from(blingList.querySelectorAll("li"))
+                .map(li => li.getAttribute("data-tip"))
+                .filter(Boolean);
+        }''')
+
+        years_pro = draft_round = draft_pick = draft_year = high_schools = None
+        is_active = False
 
         for p_text in info_paragraphs:
             text_lower = p_text.lower()
+            
             if "experience" in text_lower or "career length" in text_lower:
                 exp_match = re.search(r'(\d+)', p_text)
                 if exp_match:
@@ -62,19 +88,36 @@ async def scrape_player(browser, data, delay_range=(2,5)):
                     draft_pick = int(next(g for g in pick_match.groups() if g))
                 if year_match:
                     draft_year = int(year_match.group(1))
+            
+            if text_lower.startswith("high school:") or text_lower.startswith("high schools:"):
+                if text_lower.startswith("high school:"):
+                    hs_part = p_text[len("High School:"):].strip()
+                else:
+                    hs_part = p_text[len("High Schools:"):].strip()
 
+                matches = re.findall(r'([^,]+?)\s+in\s+[^,]+(?:,\s*[^,]+)?', hs_part)
+                high_schools = [m.strip() for m in matches if m.strip()]
+        
+        if (data["yearMax"] == datetime.now().year):
+            is_active = True
+        
+        print((
+            data["name"], player_url, data["yearMin"], data["yearMax"],
+            data["position"], data["height"], data["weight"], team_names, draft_round, draft_pick,
+            draft_year, years_pro, accolades, data["colleges"], high_schools, is_active
+        ))
         return (
             data["name"], player_url, data["yearMin"], data["yearMax"],
-            data["position"], data["height"], data["colleges"],
-            draft_round, draft_pick, draft_year, years_pro
+            data["position"], data["height"], data["weight"], team_names, draft_round, draft_pick,
+            draft_year, years_pro, accolades, data["colleges"], high_schools, is_active
         )
 
     except Exception:
         print(f"⚠️ Error fetching {player_url}:\n{traceback.format_exc()}")
         return (
             data["name"], player_url, data["yearMin"], data["yearMax"],
-            data["position"], data["height"], data["colleges"],
-            None, None, None, None
+            data["position"], data["height"], data["weight"], team_names, None, None,
+            None, years_pro, accolades, data["colleges"], None, is_active
         )
     finally:
         await page.close()
@@ -104,6 +147,7 @@ async def fetch_nba_players(browser, batch_size=3, letter_delay_range=(5,10)):
                     const yearMax = row.querySelector('td[data-stat="year_max"]')?.innerText.trim() || null;
                     const position = row.querySelector('td[data-stat="pos"]')?.innerText.trim() || null;
                     const height = row.querySelector('td[data-stat="height"]')?.innerText.trim() || null;
+                    const weight = row.querySelector('td[data-stat="weight"]')?.innerText.trim() || null;
                     const colleges = Array.from(row.querySelectorAll('td[data-stat="colleges"] a'))
                         .map(a => a.innerText.trim());
 
@@ -114,6 +158,7 @@ async def fetch_nba_players(browser, batch_size=3, letter_delay_range=(5,10)):
                         yearMax,
                         position,
                         height,
+                        weight,
                         colleges
                     };
                 });
