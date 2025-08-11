@@ -30,7 +30,6 @@ type NBAFilters = {
     position: string[];
     teams: string[];
     experience: string[];
-    salary: string[];
 };
 
 type Filters = HighSchoolFilters | CollegeFilters | NBAFilters;
@@ -64,10 +63,9 @@ export default function PlayerSearch({
             };
         case "nba":
             return {
-            position: ["PG", "SG", "SF", "PF", "C"],
+            position: ["G", "F", "C", "F-G", "G-F", "F-C", "C-F"],
             teams: ["LAL", "GSW", "BOS", "MIA", "NYK", "CHI", "DAL", "PHX"],
             experience: ["Rookie", "2-5 Years", "6-10 Years", "Veteran"],
-            salary: ["Under $5M", "$5M-$15M", "$15M-$30M", "Over $30M"],
             };
         }
     }, [level]);

@@ -5,7 +5,7 @@ import { Star } from "lucide-react";
 import Link from "next/link";
 
 interface PlayerGridProps {
-    players: NBAPlayer[] | HighSchoolPlayer[];
+    players: HighSchoolPlayer[] | NBAPlayer[];
     level: "high-school" | "college" | "nba";
 }
 

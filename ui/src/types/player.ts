@@ -21,6 +21,7 @@ export interface NBAPlayer {
     height: string;
     weight: string;
     school: string;
+    team?: string;
     experience?: string; // For NBA
     stars: number,
     overallRating: number;

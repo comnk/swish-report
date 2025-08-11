@@ -35,6 +35,7 @@ export default function NBAPage() {
           position: p.position,
           height: p.height,
           weight: "210 lbs",
+          team: "N/A",
           school: "N/A",
           experience: "Veteran",
           stars: 5,
