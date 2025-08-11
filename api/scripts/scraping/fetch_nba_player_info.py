@@ -3,18 +3,12 @@ import string
 import re
 import traceback
 import random
-from playwright.async_api import async_playwright
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/115.0.0.0 Safari/537.36"
 )
-
-async def launch_browser(headless=True):
-    playwright = await async_playwright().start()
-    browser = await playwright.chromium.launch(headless=headless)
-    return playwright, browser
 
 async def safe_goto(page, url, max_retries=3):
     for attempt in range(max_retries):
@@ -86,7 +80,7 @@ async def scrape_player(browser, data, delay_range=(2,5)):
         await page.close()
         await asyncio.sleep(random.uniform(*delay_range))  # polite delay between player requests
 
-async def fetch_nba_player_info(browser, batch_size=3, letter_delay_range=(5,10)):
+async def fetch_nba_players(browser, batch_size=3, letter_delay_range=(5,10)):
     players = []
     page = await browser.new_page()
     await page.set_extra_http_headers({"User-Agent": USER_AGENT})
@@ -143,13 +137,3 @@ async def fetch_nba_player_info(browser, batch_size=3, letter_delay_range=(5,10)
 
     await page.close()
     return players
-
-async def main():
-    playwright, browser = await launch_browser(headless=False)
-    results = await fetch_nba_player_info(browser, batch_size=3)
-    print(results[0])
-    await browser.close()
-    await playwright.stop()
-
-if __name__ == "__main__":
-    asyncio.run(main())

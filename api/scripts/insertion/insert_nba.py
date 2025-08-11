@@ -1,4 +1,9 @@
 from api.core.db import get_db_connection
+from api.scripts.scraping.fetch_nba_player_info import fetch_nba_players
+from api.utils.helpers import launch_browser
+
+import asyncio
+
 cnx = get_db_connection()
 cursor = cnx.cursor()
 
@@ -19,14 +24,18 @@ def insert_nba_players():
     """
 
 def insert_nba_player_details():
-    cursor.execute("""SELECT full_name FROM players WHERE current_level = "NBA" """)
-
-    cursor.close()
-    cnx.close()
+    pass
 
 
-def main():
+async def main():
+    playwright, browser = await launch_browser(headless=False)
+    players = await fetch_nba_players(browser)
+    
+    for player in players:
+        print(player)
+        break
+    
     result = insert_nba_player_details()
     print(result)
 
-main()
+asyncio.run(main())
