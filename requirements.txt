@@ -3,7 +3,6 @@ annotated-types==0.7.0
 anyio==4.9.0
 attrs==25.3.0
 billiard==4.2.1
-celery==5.5.3
 certifi==2025.7.14
 charset-normalizer==3.4.2
 click==8.2.1
@@ -33,7 +32,6 @@ MarkupSafe==3.0.2
 mcp==1.12.2
 mdurl==0.1.2
 mysql-connector-python==9.4.0
-nba_api==1.10.0
 numpy==2.3.1
 openai==1.97.1
 packaging==25.0

@@ -1,18 +1,10 @@
 import asyncio
-import mysql.connector
-import os
-from dotenv import load_dotenv
 from fetch_rankings_current_script import fetch_247_sports_info, fetch_espn_info, fetch_rivals_info
-from db_script_helper_functions import find_matching_player, launch_browser, clean_player_rank
+from db_script_helper_functions import find_matching_player, clean_player_rank
+from api.utils.helpers import launch_browser
+from api.core.db import get_db_connection
 
 async def load_current_player_rankings_async():
-    dotenv_path = '../.env'
-    load_dotenv(dotenv_path)
-
-    DB_USER = os.getenv('DB_USER')
-    DB_PASSWORD = os.getenv('DB_PASSWORD')
-    DB_HOST = os.getenv('DB_HOST')
-
     class_years = [2025, 2026, 2027]
 
     print("🚀 Starting serial data collection...")
@@ -39,23 +31,20 @@ async def load_current_player_rankings_async():
 
     all_rankings = data_247 + data_espn + data_rivals
 
-    cnx = mysql.connector.connect(
-        user=DB_USER,
-        password=DB_PASSWORD,
-        host=DB_HOST,
-        database='swish_report'
-    )
+    cnx = get_db_connection()
     cursor = cnx.cursor()
 
     insert_rank_sql = """
     INSERT INTO high_school_player_rankings
     (player_uid, source, class_year, player_rank, player_grade, stars, link, position, height, weight, school_name, city, state, location_type, is_finalized)
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ON DUPLICATE KEY UPDATE player_rank = VALUES(player_rank);
     """
 
     insert_player_sql = """
     INSERT INTO players (full_name, class_year, current_level)
     VALUES (%s, %s, %s)
+    ON DUPLICATE KEY UPDATE current_level = VALUES(current_level);
     """
 
     # Step 1: Fetch all existing players per class_year (to avoid many DB queries)
@@ -100,6 +89,3 @@ async def main():
     print(result)
 
 asyncio.run(main())
-# @shared_task
-# def load_current_player_rankings():
-#     asyncio.run(load_current_player_rankings_async())
