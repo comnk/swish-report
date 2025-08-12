@@ -163,13 +163,13 @@ def extract_first_json_object(text):
                 return text[start:i+1]
     return text[start:]
         
-def get_scouting_report_with_retry(player_name, ranking_info, retries=3):
+def get_scouting_report_with_retry(player_name, class_year, high_school, ranking_info, retries=3):
     ranking_info_json = json.dumps(ranking_info, indent=2)
     user_content = f"""Here is the ranking info for {player_name}:
 
     {ranking_info_json}
 
-    Please give me a scouting report for {player_name} in the JSON format I requested."""
+    Please give me a scouting report for {player_name} from {high_school} the high school class of {class_year} in the JSON format I requested."""
     
     messages = [
         {"role": "system", "content": system_prompt},
@@ -179,7 +179,7 @@ def get_scouting_report_with_retry(player_name, ranking_info, retries=3):
     for attempt in range(retries):
         try:
             response = client.chat.completions.create(
-                model="gpt-4o-mini-search-preview",
+                model="gpt-4o-search-preview",
                 messages=messages,
             )
             return response.choices[0].message.content
@@ -212,6 +212,8 @@ def ai_report_exists(player_id):
 
 def safe_process_player(player):
     player_id = player['player_uid']
+    class_year = player['class_year']
+    high_school = player['school_name']
     player_name = player['full_name']
 
     # Skip if AI report already exists for this player
@@ -223,7 +225,7 @@ def safe_process_player(player):
     ranking_info = fetch_player_rankings(player_name)
 
     try:
-        raw = get_scouting_report_with_retry(player_name, ranking_info)
+        raw = get_scouting_report_with_retry(player_name, class_year, high_school, ranking_info)
 
         parsed = parse_json_report(raw)
         if not parsed:

@@ -58,6 +58,8 @@ async def scrape_player(browser, data, delay_range=(2,5)):
             if parts:
                 team_names.append(parts[0].strip())
         
+        team_names = list(set(team_names))
+        
         accolades = await page.evaluate('''() => {
             const blingList = document.querySelector("ul#bling");
             if (!blingList) return [];

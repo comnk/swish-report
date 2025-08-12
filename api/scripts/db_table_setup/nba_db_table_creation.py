@@ -58,5 +58,21 @@ CREATE TABLE IF NOT EXISTS nba_player_info (
 );
 """)
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS nba_player_stats (
+    player_uid INT PRIMARY KEY,
+    player_id INT,
+    player_name VARCHAR(255),
+    season_id VARCHAR(10),
+    team_id INT,
+    team_abbreviation VARCHAR(10),
+    gp INT,
+    pts FLOAT,
+    reb FLOAT,
+    ast FLOAT,
+    PRIMARY KEY (player_uid, season_id)
+);
+""")
+
 print("Database and tables created successfully!")
 cnx.close()

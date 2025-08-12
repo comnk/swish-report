@@ -86,7 +86,7 @@ async def insert_nba_player_details(cursor, player_list, player_uid_map):
 
 
 async def main():
-    playwright, browser = await launch_browser(headless=False)
+    playwright, browser = await launch_browser(headless=True)
     players = await asyncio.gather(fetch_nba_players(browser))
     
     await browser.close()
