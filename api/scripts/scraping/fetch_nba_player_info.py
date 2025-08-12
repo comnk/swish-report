@@ -98,7 +98,7 @@ async def scrape_player(browser, data, delay_range=(2,5)):
                 matches = re.findall(r'([^,]+?)\s+in\s+[^,]+(?:,\s*[^,]+)?', hs_part)
                 high_schools = [m.strip() for m in matches if m.strip()]
         
-        if (data["yearMax"] == datetime.now().year):
+        if (int(data["yearMax"]) == datetime.now().year):
             is_active = True
         
         print((

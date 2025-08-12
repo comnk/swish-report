@@ -38,13 +38,13 @@ async def load_current_player_rankings_async():
     INSERT INTO high_school_player_rankings
     (player_uid, source, class_year, player_rank, player_grade, stars, link, position, height, weight, school_name, city, state, location_type, is_finalized)
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-    ON DUPLICATE KEY UPDATE player_rank = VALUES(player_rank);
+    ON DUPLICATE KEY UPDATE player_rank = VALUES(player_rank), class_year = VALUES(class_year);
     """
 
     insert_player_sql = """
     INSERT INTO players (full_name, class_year, current_level)
     VALUES (%s, %s, %s)
-    ON DUPLICATE KEY UPDATE current_level = VALUES(current_level);
+    ON DUPLICATE KEY UPDATE current_level = VALUES(current_level), class_year = VALUES(class_year);
     """
 
     # Step 1: Fetch all existing players per class_year (to avoid many DB queries)
