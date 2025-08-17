@@ -25,53 +25,65 @@ cnx.close()
 cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, database='swish_report')
 cursor = cnx.cursor()
 
+# DRAFT EVALS: consistent FK name + InnoDB
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS nba_draft_evaluations (
     evaluation_id INT AUTO_INCREMENT PRIMARY KEY,
-    player_id INT NOT NULL,
+    player_uid INT NOT NULL,
     source VARCHAR(255) NOT NULL,
     notes MEDIUMTEXT NOT NULL,
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (player_id) REFERENCES players(player_uid)
-);
+    last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_nde_player FOREIGN KEY (player_uid)
+        REFERENCES players(player_uid) ON DELETE CASCADE
+) ENGINE=InnoDB;
 """)
 
+# PLAYER INFO: only ONE auto-updating timestamp (updated_at).
+# last_scraped is DATETIME you set from code.
+# JSON requires MySQL 5.7+. If you're on older MySQL/MariaDB, see fallback below.
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS nba_player_info (
-    player_uid INT PRIMARY KEY,
-    position VARCHAR(50) NULL,
-    height VARCHAR(10) NULL,
-    weight INT NULL,
-    teams JSON NOT NULL,
-    min_year INT NULL,
-    max_year INT NULL,
-    draft_round INT NULL,
-    draft_pick INT NULL,
-    draft_year INT NULL,
-    years_pro INT NULL,
-    accolades JSON NULL,
-    colleges JSON NULL,
-    high_schools JSON NULL,
-    is_active BOOLEAN DEFAULT FALSE,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (player_uid) REFERENCES players(player_uid) ON DELETE CASCADE
-);
+    info_uid INT AUTO_INCREMENT PRIMARY KEY,
+    player_uid INT NOT NULL,
+    player_url VARCHAR(255),
+    position VARCHAR(50),
+    height VARCHAR(20),
+    weight VARCHAR(20),
+    teams JSON,
+    min_year INT,
+    max_year INT,
+    draft_round INT,
+    draft_pick INT,
+    draft_year INT,
+    years_pro INT,
+    accolades JSON,
+    colleges JSON,
+    high_schools JSON,
+    is_active BOOLEAN,
+    data_hash VARCHAR(32),
+    last_scraped TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_player_year (player_uid, draft_year),
+    FOREIGN KEY (player_uid) REFERENCES players(player_uid)
+) ENGINE=InnoDB;
 """)
 
+# PLAYER STATS: remove duplicate player_id, add PK, unique (player_uid, season_id), InnoDB
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS nba_player_stats (
-    player_uid INT PRIMARY KEY,
-    player_id INT,
-    player_name VARCHAR(255),
-    season_id VARCHAR(10),
+    stat_id INT AUTO_INCREMENT PRIMARY KEY,
+    player_uid INT NOT NULL,
+    season_id VARCHAR(10) NOT NULL,
     team_id INT,
     team_abbreviation VARCHAR(10),
     gp INT,
     pts FLOAT,
     reb FLOAT,
     ast FLOAT,
-    PRIMARY KEY (player_uid, season_id)
-);
+    last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_player_season (player_uid, season_id),
+    CONSTRAINT fk_nps_player FOREIGN KEY (player_uid)
+        REFERENCES players(player_uid) ON DELETE CASCADE
+) ENGINE=InnoDB;
 """)
 
 print("Database and tables created successfully!")
