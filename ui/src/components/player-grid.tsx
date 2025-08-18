@@ -112,12 +112,18 @@ export default function PlayerGrid({ players, level }: PlayerGridProps) {
             {/* Action Buttons */}
             <div className="flex gap-2">
                 <Link
-                    href={`/high-school/${player.id}`}
+                    href={
+                    level === "high-school"
+                        ? `/high-school/${player.id}`
+                        : level === "nba"
+                        ? `/nba/${player.id}`
+                        : "#" // fallback if other levels exist
+                    }
                     className="flex-1 bg-orange-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors text-center block"
                 >
                     View Report
                 </Link>
-            </div>
+                </div>
             </div>
         ))}
         </div>

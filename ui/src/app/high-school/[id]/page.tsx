@@ -7,11 +7,9 @@ interface PlayerPageProps {
 export default async function PlayerPage({ params }: PlayerPageProps) {
     const { id } = await params;
 
-    console.log(id);
-
     // Fetch directly on the server
     const res = await fetch(`http://localhost:8000/high-school/prospects/${id}`, {
-        cache: "no-store", // optional: fetch fresh each render
+        cache: "no-store",
     });
 
     if (!res.ok) {

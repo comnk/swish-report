@@ -49,7 +49,7 @@ export default function NBAPage() {
         }[] = await res.json();
 
         const mappedPlayers: NBAPlayer[] = data.map((p) => ({
-          id: `nba-${p.player_uid ?? Math.random().toString(36).substr(2, 9)}`,
+          id: String(p.player_uid),
           name: p.full_name,
           position: p.position,
           height: p.height,
