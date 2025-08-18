@@ -46,7 +46,7 @@ export default function PlayerGrid({ players, level }: PlayerGridProps) {
     };
 
     // Shuffle players before rendering
-    const shuffledPlayers = shuffleArray(players);
+    const shuffledPlayers = shuffleArray<typeof players[0]>(players);
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -66,7 +66,10 @@ export default function PlayerGrid({ players, level }: PlayerGridProps) {
                 <div>
                     <h3 className="font-semibold text-slate-900 text-lg">{player.name}</h3>
                     <p className="text-slate-600 text-sm">
-                    {player.position} | {player.height} | {player.school}
+                        {player.position} | {player.height} |{" "}
+                        {level === "high-school"
+                            ? (player as HighSchoolPlayer).school ?? "-"
+                            : (player as NBAPlayer).team_names?.slice(-1)[0] ?? "-"}
                     </p>
                     <div className="flex items-center mt-1">
                         {Array.from({ length: player.stars }).map((_, i) => (

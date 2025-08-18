@@ -27,34 +27,58 @@ export default function NBAPage() {
       try {
         const res = await fetch("http://localhost:8000/nba/players");
         if (!res.ok) throw new Error(`Error fetching NBA players: ${res.status}`);
-        const data: { full_name: string, position: string, height: string }[] = await res.json();
         
-        console.log(data);
+        // Expecting backend to return all the DB fields you listed
+        const data: {
+          player_uid: number;
+          full_name: string;
+          position: string;
+          height: string;
+          weight: string;
+          yearMin: number;
+          yearMax: number;
+          team_names: string[];
+          draft_round: number | null;
+          draft_pick: number | null;
+          draft_year: number | null;
+          years_pro: number;
+          colleges: string[];
+          high_schools: string[];
+          is_active: boolean;
+          accolades: string[];
+        }[] = await res.json();
 
-        const mappedPlayers: NBAPlayer[] = data.map((p, i) => ({
-          id: `nba-${i}`,
+        console.log(data[0]);
+
+        const mappedPlayers: NBAPlayer[] = data.map((p) => ({
+          id: `nba-${p.player_uid ?? Math.random().toString(36).substr(2, 9)}`,
           name: p.full_name,
           position: p.position,
           height: p.height,
-          weight: "210 lbs",
-          team: "N/A",
-          school: "N/A",
-          experience: "Veteran",
-          stars: 5,
-          overallRating: 90,
+          weight: p.weight,
+          team_names: p.team_names,
+          school: (p.colleges?.length ? p.colleges.join(", ") : (p.high_schools || []).join(", ")),
+          experience: p.years_pro > 0 ? `${p.years_pro} years pro` : "Rookie",
+          draftInfo: p.draft_year
+            ? `Draft ${p.draft_year} • R${p.draft_round} P${p.draft_pick}`
+            : "Undrafted",
+          isActive: p.is_active,
+          accolades: p.accolades,
           stats: {
-            points: 15 + i,
-            rebounds: 5 + i,
-            assists: 4 + i,
-            fieldGoalPercentage: 0.45,
-            threePointPercentage: 0.38,
-            per: 15 + i,
-            winShares: 3 + i * 0.1,
+            // These are placeholders unless you join game stats table later
+            points: 0,
+            rebounds: 0,
+            assists: 0,
+            fieldGoalPercentage: 0,
+            threePointPercentage: 0,
+            per: 0,
+            winShares: 0,
           },
-          strengths: ["shooting", "defense", "athleticism"],
-          weaknesses: ["turnovers", "free throws"],
-          aiAnalysis: `Detailed AI analysis for ${p.full_name}.`,
-          salary: "$15M",
+          strengths: ["athleticism", "defense"], // placeholder until you add evals
+          weaknesses: ["turnovers"], // placeholder
+          aiAnalysis: `AI scouting report for ${p.full_name}.`,
+          overallRating: 85, // could be computed later from stats/AI
+          stars: 4,
         }));
 
         setPlayers(shuffleArray(mappedPlayers));
@@ -67,6 +91,7 @@ export default function NBAPage() {
 
     fetchNBAPlayers();
   }, []);
+
 
   // Filtering logic based on searchTerm and selectedFilters
   const filteredPlayers = players.filter((player) => {
