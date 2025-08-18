@@ -135,6 +135,8 @@ async def scrape_player(browser, data, delay_range=(2,5)):
             high_schools or [],
             is_active
         )
+        
+        print(player_tuple)
 
         return player_tuple
 
@@ -157,7 +159,6 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=5, letter
     seen_keys = set()
     page = await browser.new_page()
     await page.set_extra_http_headers({"User-Agent": USER_AGENT})
-    current_year = datetime.now().year
 
     for letter in string.ascii_lowercase:
         if letter == "x":  # Basketball Reference skips X
@@ -172,15 +173,15 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=5, letter
             return rows.map(row => {
                 const playerCell = row.querySelector('th[data-stat="player"] a');
                 return {
-                    name: playerCell?.innerText.trim() || None,
-                    link: playerCell?.getAttribute("href") || None,
-                    yearMin: row.querySelector('td[data-stat="year_min"]')?.innerText.trim() || None,
-                    yearMax: row.querySelector('td[data-stat="year_max"]')?.innerText.trim() || None,
-                    position: row.querySelector('td[data-stat="pos"]')?.innerText.trim() || None,
-                    height: row.querySelector('td[data-stat="height"]')?.innerText.trim() || None,
-                    weight: row.querySelector('td[data-stat="weight"]')?.innerText.trim() || None,
+                    name: playerCell?.innerText.trim() || null,
+                    link: playerCell?.getAttribute("href") || null,
+                    yearMin: row.querySelector('td[data-stat="year_min"]')?.innerText.trim() || null,
+                    yearMax: row.querySelector('td[data-stat="year_max"]')?.innerText.trim() || null,
+                    position: row.querySelector('td[data-stat="pos"]')?.innerText.trim() || null,
+                    height: row.querySelector('td[data-stat="height"]')?.innerText.trim() || null,
+                    weight: row.querySelector('td[data-stat="weight"]')?.innerText.trim() || null,
                     colleges: Array.from(row.querySelectorAll('td[data-stat="colleges"] a'))
-                    .map(a => a.innerText.trim())
+                        .map(a => a.innerText.trim())
                 };
             });
         }''')
@@ -191,7 +192,7 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=5, letter
         for i in range(0, len(rows_data), batch_size):
             batch = rows_data[i:i+batch_size]
             results = await asyncio.gather(*(scrape_player(browser, d) for d in batch), return_exceptions=True)
-
+            
             for player_tuple in results:
                 if isinstance(player_tuple, Exception):
                     print("⚠️ Error scraping player:", player_tuple)
