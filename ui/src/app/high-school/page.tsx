@@ -34,7 +34,7 @@ export default function HighSchoolPage() {
 
         const mapped: HighSchoolPlayer[] = data.map((p: any) => ({
           id: String(p.id),
-          name: p.full_name,
+          full_name: p.full_name,
           position: p.position,
           school: p.school_name,
           class: p.class_year?.toString() ?? "",
@@ -65,7 +65,7 @@ export default function HighSchoolPage() {
   const filteredPlayers = players.filter((player) => {
     const matchesSearch =
       searchTerm === "" ||
-      player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      player.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       player.school?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesFilters = Object.entries(selectedFilters).every(([key, value]) => {

@@ -1,6 +1,6 @@
 export interface HighSchoolPlayer {
     id: string;
-    name: string;
+    full_name: string;
     position: string;
     height: string;
     weight: string;

@@ -3,17 +3,14 @@ import time
 import json
 import re
 import concurrent.futures
-import mysql.connector
 from dotenv import load_dotenv
 from openai import OpenAI
+from ...core.db import get_db_connection
 
 # Load environment variables
 dotenv_path = '../.env'
 load_dotenv(dotenv_path)
 
-DB_USER = os.getenv('DB_USER')
-DB_PASSWORD = os.getenv('DB_PASSWORD')
-DB_HOST = os.getenv('DB_HOST')
 OPENAI_KEY = os.getenv('OPENAI_KEY')
 if not OPENAI_KEY:
     raise ValueError("OPENAI_KEY not found")
@@ -21,7 +18,7 @@ if not OPENAI_KEY:
 client = OpenAI(api_key=OPENAI_KEY)
 
 select_sql = """
-SELECT p.player_uid, p.full_name FROM players AS p
+SELECT p.player_uid, p.full_name, hspr.class_year, hspr.school_name FROM players AS p
 INNER JOIN high_school_player_rankings AS hspr ON hspr.player_uid = p.player_uid
 WHERE hspr.source = '247sports' AND p.current_level="HS";
 """
@@ -45,15 +42,6 @@ ON DUPLICATE KEY UPDATE
     ai_analysis = VALUES(ai_analysis);
 """
 
-def get_db_connection():
-    return mysql.connector.connect(
-        host=DB_HOST,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database='swish_report',
-        autocommit=True
-    )
-
 def fetch_players():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -75,7 +63,7 @@ def fetch_player_rankings(player_name):
 system_prompt = """
 You are a basketball recruiting expert that scouts high school, college, and NBA talent.
 
-When the user asks for a scouting report, return a valid JSON object exactly like this:
+When the user asks for a scouting report, return a valid JSON object exactly like this. Do not include links, sources, or references of any kind in your response:
 
 {
     "stars": [how many stars you think the player deserves, as a whole number. Top 25 players should be rated 5 stars, anybody between 25 and 100 average is 4 stars, and rest are 3 stars]
@@ -169,7 +157,7 @@ def get_scouting_report_with_retry(player_name, class_year, high_school, ranking
 
     {ranking_info_json}
 
-    Please give me a scouting report for {player_name} from {high_school} the high school class of {class_year} in the JSON format I requested."""
+    Please give me a scouting report for {player_name} from {high_school} in the high school class of {class_year} in the JSON format I requested. Keep it plain text with no hyperlinks or citations, and return strictly valid JSON."""
     
     messages = [
         {"role": "system", "content": system_prompt},
@@ -198,6 +186,7 @@ def insert_report(player_id, stars, rating, strengths, weaknesses, ai_analysis):
     strengths_json = json.dumps(strengths)
     weaknesses_json = json.dumps(weaknesses)
     cursor.execute(insert_sql, (player_id, stars, rating, strengths_json, weaknesses_json, ai_analysis))
+    conn.commit()
     cursor.close()
     conn.close()
 

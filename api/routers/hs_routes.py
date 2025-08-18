@@ -62,6 +62,7 @@ def get_highschool_player(player_id: int):
         hspr.position,
         hspr.school_name,
         hspr.height,
+        hspr.weight,
         COALESCE(ai.stars, 4) AS stars,
         COALESCE(ai.rating, 85) AS overallRating,
         COALESCE(ai.strengths, JSON_ARRAY('Scoring', 'Athleticism', 'Court Vision')) AS strengths,
@@ -98,6 +99,8 @@ def get_highschool_player(player_id: int):
         # Rename player_uid to id
         row["id"] = row.pop("player_uid")
         row["school"] = row.pop("school_name")
+        row["class"] = row.pop("class_year")
+        
         return row
 
     except Exception as e:
