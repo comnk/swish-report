@@ -48,8 +48,6 @@ export default function NBAPage() {
           accolades: string[];
         }[] = await res.json();
 
-        console.log(data[0]);
-
         const mappedPlayers: NBAPlayer[] = data.map((p) => ({
           id: `nba-${p.player_uid ?? Math.random().toString(36).substr(2, 9)}`,
           name: p.full_name,

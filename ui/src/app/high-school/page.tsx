@@ -33,7 +33,7 @@ export default function HighSchoolPage() {
         const data = await res.json();
 
         const mapped: HighSchoolPlayer[] = data.map((p: any) => ({
-          id: String(p.player_uid),
+          id: String(p.id),
           name: p.full_name,
           position: p.position,
           school: p.school_name,

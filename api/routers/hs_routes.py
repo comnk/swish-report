@@ -1,31 +1,11 @@
-from fastapi import APIRouter
-from typing import List
-from fastapi import HTTPException
-import mysql.connector
-from typing import List
-
-import os
+from fastapi import APIRouter, HTTPException
+from ..core.db import get_db_connection
+from typing import List, Dict
 import json
-from dotenv import load_dotenv
 
 router = APIRouter()
 
-def get_db_connection():
-    dotenv_path = '.env'
-    load_dotenv(dotenv_path)
-
-    DB_USER = os.getenv('DB_USER')
-    DB_PASSWORD = os.getenv('DB_PASSWORD')
-    DB_HOST = os.getenv('DB_HOST')
-    
-    return mysql.connector.connect(
-        host=DB_HOST,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database='swish_report'
-    )
-
-@router.get("/prospects", response_model=List[dict])
+@router.get("/prospects", response_model=List[Dict])
 def get_highschool_prospects():
     select_sql = """
     SELECT
@@ -43,9 +23,8 @@ def get_highschool_prospects():
     FROM players AS p
     INNER JOIN high_school_player_rankings AS hspr ON hspr.player_uid = p.player_uid
     LEFT JOIN ai_generated_high_school_evaluations AS ai ON ai.player_id = p.player_uid
-    WHERE hspr.source = '247sports' AND p.current_level="HS";
+    WHERE hspr.source = '247sports' AND p.current_level = 'HS';
     """
-
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -54,20 +33,77 @@ def get_highschool_prospects():
         cursor.close()
         conn.close()
 
-        # Parse JSON strings for strengths and weaknesses to Python lists
+        # Parse JSON fields
         for row in rows:
-            # If strengths is a string (JSON), parse it, else use default list
-            if isinstance(row['strengths'], str):
-                try:
-                    row['strengths'] = json.loads(row['strengths'])
-                except json.JSONDecodeError:
-                    row['strengths'] = ["Scoring", "Athleticism", "Court Vision"]
-            if isinstance(row['weaknesses'], str):
-                try:
-                    row['weaknesses'] = json.loads(row['weaknesses'])
-                except json.JSONDecodeError:
-                    row['weaknesses'] = ["Defense", "Consistency"]
+            for field, default in [("strengths", ["Scoring", "Athleticism", "Court Vision"]),
+                ("weaknesses", ["Defense", "Consistency"])]:
+                if isinstance(row[field], str):
+                    try:
+                        row[field] = json.loads(row[field])
+                    except json.JSONDecodeError:
+                        row[field] = default
+
+            # Rename player_uid to id for frontend compatibility
+            row["id"] = row.pop("player_uid")
 
         return rows
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/prospects/{player_id}", response_model=Dict)
+def get_highschool_player(player_id: int):
+    select_sql = """
+    SELECT
+        p.player_uid,
+        p.full_name,
+        p.class_year,
+        hspr.position,
+        hspr.school_name,
+        hspr.height,
+        COALESCE(ai.stars, 4) AS stars,
+        COALESCE(ai.rating, 85) AS overallRating,
+        COALESCE(ai.strengths, JSON_ARRAY('Scoring', 'Athleticism', 'Court Vision')) AS strengths,
+        COALESCE(ai.weaknesses, JSON_ARRAY('Defense', 'Consistency')) AS weaknesses,
+        COALESCE(ai.ai_analysis, 'A highly talented high school prospect with excellent scoring ability and strong athletic traits.') AS aiAnalysis
+    FROM players AS p
+    INNER JOIN high_school_player_rankings AS hspr ON hspr.player_uid = p.player_uid
+    LEFT JOIN ai_generated_high_school_evaluations AS ai ON ai.player_id = p.player_uid
+    WHERE p.player_uid = %s AND p.current_level = 'HS';
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True, buffered=True)  # <-- key fix
+        cursor.execute(select_sql, (player_id,))
+        row = cursor.fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Player not found")
+
+        # Ensure JSON fields are Python lists
+        for field, default in [
+            ("strengths", ["Scoring", "Athleticism", "Court Vision"]),
+            ("weaknesses", ["Defense", "Consistency"])
+        ]:
+            value = row.get(field)
+            if isinstance(value, str):
+                try:
+                    row[field] = json.loads(value)
+                except json.JSONDecodeError:
+                    row[field] = default
+            elif value is None:
+                row[field] = default
+
+        # Rename player_uid to id
+        row["id"] = row.pop("player_uid")
+        row["school"] = row.pop("school_name")
+        return row
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()

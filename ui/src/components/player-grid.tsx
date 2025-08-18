@@ -87,14 +87,14 @@ export default function PlayerGrid({ players, level }: PlayerGridProps) {
             <div className="mb-4">
                 <h4 className="text-sm font-medium text-slate-700 mb-2">Key Strengths</h4>
                 <div className="flex flex-wrap gap-1">
-                {player.strengths.slice(0, 3).map((strength: any, index: any) => (
-                    <span
-                    key={index}
-                    className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full"
-                    >
-                    {strength}
-                    </span>
-                ))}
+                    {player.strengths.slice(0, 3).map((strength: any, index: any) => (
+                        <span
+                            key={`${player.id}-strength-${index}`} // unique across players
+                            className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full"
+                        >
+                            {strength}
+                        </span>
+                    ))}
                 </div>
             </div>
 
