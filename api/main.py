@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import nba_routes, hs_routes, college_routes
+from api.routers import nba_routes, hs_routes, college_routes
 
 app = FastAPI(title="swish report")
 

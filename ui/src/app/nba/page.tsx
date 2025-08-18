@@ -28,6 +28,8 @@ export default function NBAPage() {
         const res = await fetch("http://localhost:8000/nba/players");
         if (!res.ok) throw new Error(`Error fetching NBA players: ${res.status}`);
         const data: { full_name: string, position: string, height: string }[] = await res.json();
+        
+        console.log(data);
 
         const mappedPlayers: NBAPlayer[] = data.map((p, i) => ({
           id: `nba-${i}`,
