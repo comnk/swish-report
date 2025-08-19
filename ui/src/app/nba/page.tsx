@@ -138,26 +138,6 @@ export default function NBAPage() {
           </p>
         </div>
 
-        {/* League Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-            <div className="text-2xl font-bold text-purple-600">450+</div>
-            <div className="text-slate-600">Active Players</div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-            <div className="text-2xl font-bold text-red-600">30</div>
-            <div className="text-slate-600">NBA Teams</div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-            <div className="text-2xl font-bold text-orange-600">82</div>
-            <div className="text-slate-600">Games/Season</div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-            <div className="text-2xl font-bold text-green-600">$4.2B</div>
-            <div className="text-slate-600">Total Salaries</div>
-          </div>
-        </div>
-
         {/* Player Search + Filters */}
         <PlayerSearch
           level="nba"

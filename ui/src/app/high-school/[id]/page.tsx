@@ -142,7 +142,7 @@ export default async function PlayerPage({ params }: PlayerPageProps) {
                 <div className="bg-white rounded-lg shadow-sm p-6">
                     <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center justify-center">
                     <TrendingDown className="w-5 h-5 text-red-600 mr-2" />
-                    Areas for Improvement
+                    Weaknesses
                     </h3>
                     <ul className="space-y-2">
                     {player.weaknesses.map((weakness, index) => (

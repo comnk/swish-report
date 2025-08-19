@@ -3,7 +3,9 @@ import time
 import json
 import re
 import concurrent.futures
+
 from dotenv import load_dotenv
+from datetime import datetime
 from openai import OpenAI
 from ...core.db import get_db_connection
 
@@ -190,7 +192,10 @@ def insert_report(player_id, stars, rating, strengths, weaknesses, ai_analysis):
     cursor.close()
     conn.close()
 
-def ai_report_exists(player_id):
+def ai_report_exists(player_id, class_year):
+    if (int(class_year) <= datetime.now().year):
+        return True
+    
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT 1 FROM ai_generated_high_school_evaluations WHERE player_id = %s LIMIT 1", (player_id,))
@@ -206,7 +211,7 @@ def safe_process_player(player):
     player_name = player['full_name']
 
     # Skip if AI report already exists for this player
-    if ai_report_exists(player_id):
+    if ai_report_exists(player_id, class_year):
         print(f"Skipping {player_name}, AI report already exists.")
         return player_name, True  # Treat as success so no retry needed
 
