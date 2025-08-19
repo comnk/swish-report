@@ -36,9 +36,23 @@ async def load_current_player_rankings_async():
 
     insert_rank_sql = """
     INSERT INTO high_school_player_rankings
-    (player_uid, source, class_year, player_rank, player_grade, stars, link, position, height, weight, school_name, city, state, location_type, is_finalized)
+    (player_uid, source, class_year, player_rank, player_grade, stars, link, position, height, weight,
+    school_name, city, state, location_type, is_finalized)
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-    ON DUPLICATE KEY UPDATE player_rank = VALUES(player_rank), class_year = VALUES(class_year);
+    ON DUPLICATE KEY UPDATE
+        player_rank   = VALUES(player_rank),
+        player_grade  = VALUES(player_grade),
+        stars         = VALUES(stars),
+        link          = VALUES(link),
+        position      = VALUES(position),
+        height        = VALUES(height),
+        weight        = VALUES(weight),
+        school_name   = VALUES(school_name),
+        city          = VALUES(city),
+        state         = VALUES(state),
+        location_type = VALUES(location_type),
+        is_finalized  = VALUES(is_finalized),
+        last_updated  = CURRENT_TIMESTAMP;
     """
 
     insert_player_sql = """

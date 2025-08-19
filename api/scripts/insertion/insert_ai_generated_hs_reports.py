@@ -1,23 +1,13 @@
-import os
 import time
 import json
 import re
 import concurrent.futures
 
-from dotenv import load_dotenv
 from datetime import datetime
-from openai import OpenAI
 from ...core.db import get_db_connection
+from ...core.config import set_openai
 
-# Load environment variables
-dotenv_path = '../.env'
-load_dotenv(dotenv_path)
-
-OPENAI_KEY = os.getenv('OPENAI_KEY')
-if not OPENAI_KEY:
-    raise ValueError("OPENAI_KEY not found")
-
-client = OpenAI(api_key=OPENAI_KEY)
+client = set_openai()
 
 select_sql = """
 SELECT p.player_uid, p.full_name, hspr.class_year, hspr.school_name FROM players AS p
