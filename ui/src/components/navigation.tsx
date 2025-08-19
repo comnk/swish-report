@@ -11,6 +11,7 @@ export default function Navigation() {
         { name: "High School", href: "/high-school" },
         { name: "College", href: "/college" },
         { name: "NBA", href: "/nba" },
+        
     ];
 
     return (
@@ -39,6 +40,9 @@ export default function Navigation() {
                     <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
                 </Link>
                 ))}
+                <Link href="/submit-player" className="text-gray-300 hover:text-white transition-colors">
+        +            Submit Player
+        +       </Link>
                 <button className="bg-orange-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-700 transition-colors">
                 Get Started
                 </button>
