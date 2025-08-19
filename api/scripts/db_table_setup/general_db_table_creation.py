@@ -3,6 +3,10 @@ from api.core.db import get_db_connection
 cnx = get_db_connection()
 cursor = cnx.cursor()
 
+# Create database
+cursor.execute("CREATE DATABASE IF NOT EXISTS swish_report")
+cnx.close()
+
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS players (
     player_uid INT AUTO_INCREMENT PRIMARY KEY,

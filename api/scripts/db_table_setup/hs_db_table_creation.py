@@ -1,28 +1,7 @@
-import mysql.connector
-import os
-
-from dotenv import load_dotenv
-
-dotenv_path = '../../.env'
-
-# Load the .env file
-load_dotenv(dotenv_path)
-
-# Access environment variables
-DB_USER = os.getenv('DB_USER')
-DB_PASSWORD = os.getenv('DB_PASSWORD')
-DB_HOST=os.getenv('DB_HOST')
-
-# Connect without a database first to create one
-cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST)
-cursor = cnx.cursor()
-
-# Create database
-cursor.execute("CREATE DATABASE IF NOT EXISTS swish_report")
-cnx.close()
+from api.core.db import get_db_connection
 
 # Now connect to that database
-cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host=DB_HOST, database='swish_report')
+cnx = get_db_connection()
 cursor = cnx.cursor()
 
 cursor.execute("""
@@ -88,8 +67,8 @@ CREATE TABLE IF NOT EXISTS hs_social_media_content (
     id INT AUTO_INCREMENT PRIMARY KEY,
     player_uid INT NOT NULL,
     platform ENUM('YOUTUBE', 'TWITTER') NOT NULL,
-    content_id VARCHAR(255) NOT NULL,   -- YouTube videoId or Tweet ID
-    title VARCHAR(255),                 -- YouTube video title or tweet text
+    content_id VARCHAR(255) NOT NULL,
+    title VARCHAR(255),
     url TEXT NOT NULL,
     thumbnail_url TEXT,
     author VARCHAR(255),
