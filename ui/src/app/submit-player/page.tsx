@@ -56,8 +56,8 @@ export default function SubmitPlayerPage() {
         {/* Header */}
         <div className="bg-white border-b">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <Link 
-                href="/" 
+            <Link
+                href="/"
                 className="inline-flex items-center text-gray-600 hover:text-orange-600 transition-colors mb-4"
             >
                 <ArrowLeft className="w-4 h-4 mr-2" />

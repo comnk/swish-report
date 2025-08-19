@@ -83,5 +83,21 @@ CREATE TABLE IF NOT EXISTS 247_high_school_player_evaluations (
 );
 """)
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS hs_social_media_content (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    player_uid INT NOT NULL,
+    platform ENUM('YOUTUBE', 'TWITTER') NOT NULL,
+    content_id VARCHAR(255) NOT NULL,   -- YouTube videoId or Tweet ID
+    title VARCHAR(255),                 -- YouTube video title or tweet text
+    url TEXT NOT NULL,
+    thumbnail_url TEXT,
+    author VARCHAR(255),
+    published_at TIMESTAMP,
+    fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (player_uid) REFERENCES players(player_uid)
+);
+""")
+
 print("Database and tables created successfully!")
 cnx.close()

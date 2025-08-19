@@ -29,8 +29,6 @@ export default async function PlayerPage({ params }: PlayerPageProps) {
         return 'text-red-600 bg-red-50'; // below 70
     };
 
-    console.log(player);
-
     return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}

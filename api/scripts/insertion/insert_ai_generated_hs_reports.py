@@ -193,6 +193,7 @@ def insert_report(player_id, stars, rating, strengths, weaknesses, ai_analysis):
     conn.close()
 
 def ai_report_exists(player_id, class_year):
+    # fix Jacob Wilkins later because why
     if (int(class_year) <= datetime.now().year):
         return True
     
