@@ -12,14 +12,14 @@ client = set_openai()
 select_sql = """
 SELECT p.player_uid, p.full_name, hspr.class_year, hspr.school_name FROM players AS p
 INNER JOIN high_school_player_rankings AS hspr ON hspr.player_uid = p.player_uid
-WHERE hspr.source = '247sports' AND p.current_level="HS";
+WHERE hspr.source = '247sports' AND p.class_year IS NOT NULL;
 """
 
 select_sql_per_player = """
 SELECT p.full_name, hspr.player_rank, hspr.player_grade, hspr.stars, hspr.source
 FROM high_school_player_rankings AS hspr
 INNER JOIN players AS p ON hspr.player_uid = p.player_uid
-WHERE p.full_name = %s AND p.current_level="HS";
+WHERE p.full_name = %s AND p.class_year IS NOT NULL;
 """
 
 insert_sql = """

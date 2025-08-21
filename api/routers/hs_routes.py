@@ -24,7 +24,7 @@ def get_highschool_prospects():
     FROM players AS p
     INNER JOIN high_school_player_rankings AS hspr ON hspr.player_uid = p.player_uid
     LEFT JOIN ai_generated_high_school_evaluations AS ai ON ai.player_id = p.player_uid
-    WHERE hspr.source = '247sports' AND p.current_level = 'HS';
+    WHERE hspr.source = '247sports' AND p.class_year IS NOT NULL;
     """
     try:
         conn = get_db_connection()
@@ -72,7 +72,7 @@ def get_highschool_player(player_id: int):
     FROM players AS p
     INNER JOIN high_school_player_rankings AS hspr ON hspr.player_uid = p.player_uid
     LEFT JOIN ai_generated_high_school_evaluations AS ai ON ai.player_id = p.player_uid
-    WHERE p.player_uid = %s AND p.current_level = 'HS';
+    WHERE p.player_uid = %s AND p.class_year IS NOT NULL;
     """
     try:
         conn = get_db_connection()

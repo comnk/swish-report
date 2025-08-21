@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS high_school_player_rankings (
     player_grade INT,
     stars INT,
     link TEXT,
+    player_image TEXT,
     position VARCHAR(50),
     height VARCHAR(20),
     weight VARCHAR(20),
@@ -48,33 +49,6 @@ CREATE TABLE IF NOT EXISTS ai_generated_high_school_evaluations (
     strengths JSON NOT NULL,
     weaknesses JSON NOT NULL,
     ai_analysis MEDIUMTEXT NOT NULL
-);
-""")
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS 247_high_school_player_evaluations (
-    evaluation_id INT AUTO_INCREMENT PRIMARY KEY,
-    player_id INT NOT NULL,
-    evaluator_name VARCHAR(255),
-    evaluation_date DATE,
-    notes MEDIUMTEXT NOT NULL,
-    FOREIGN KEY (player_id) REFERENCES high_school_player_rankings(id)
-);
-""")
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS hs_social_media_content (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    player_uid INT NOT NULL,
-    platform ENUM('YOUTUBE', 'TWITTER') NOT NULL,
-    content_id VARCHAR(255) NOT NULL,
-    title VARCHAR(255),
-    url TEXT NOT NULL,
-    thumbnail_url TEXT,
-    author VARCHAR(255),
-    published_at TIMESTAMP,
-    fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (player_uid) REFERENCES players(player_uid)
 );
 """)
 
