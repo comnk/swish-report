@@ -1,4 +1,4 @@
-from api.utils.db_script_helper_functions import parse_school, parse_247_metrics, normalize_espn_height, get_espn_star_count, is_rankings_finalized
+from api.utils.hs_helpers import parse_school, parse_247_metrics, normalize_espn_height, get_espn_star_count, is_rankings_finalized
 
 async def fetch_247_sports_info(class_years, browser):
     rankings_247 = []

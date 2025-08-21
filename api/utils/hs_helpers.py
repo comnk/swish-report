@@ -152,6 +152,26 @@ def get_espn_star_count(class_str: str) -> int:
     word = m.group(1).lower()
     return WORD_TO_NUM.get(word, 0)
 
+def parse_espn_bio(bio_text: str) -> Tuple[Optional[str], Optional[int], Optional[int]]:
+    """
+    Parse bio string like '6-0, 165 | Class of 2025' into (height, weight, class_year).
+    - height as original string (e.g. '6-0')
+    - weight as int (165)
+    - class_year as int (2025)
+    """
+    bio_text = bio_text.strip()
+
+    # match height and weight
+    hw_match = re.search(r"(\d+-\d+),\s*(\d+)", bio_text)
+    height = hw_match.group(1) if hw_match else None
+    weight = int(hw_match.group(2)) if hw_match else None
+
+    # match class year
+    year_match = re.search(r"Class of (\d{4})", bio_text, flags=re.I)
+    class_year = int(year_match.group(1)) if year_match else None
+
+    return height, weight, class_year
+
 FINALIZATION_MONTH = 5
 FINALIZATION_DAY = 7
 
@@ -166,9 +186,6 @@ def is_rankings_finalized(class_year: int) -> bool:
         return today >= cutoff
 
     return False
-
-def get_rivals_star_count():
-    pass
 
 def normalize_name(name: str) -> str:
     if not name:
@@ -209,3 +226,71 @@ def clean_player_rank(rank):
         return rank_int
     except (ValueError, TypeError):
         return None
+
+def parse_city_state(text: str):
+    """
+    Convert 'Los Angeles, Calif.' -> ('Los Angeles', 'CA')
+    """
+    text = text.strip()
+    if "," not in text:
+        return text, None
+
+    city, state_raw = [t.strip() for t in text.split(",", 1)]
+
+    STATE_MAP = {
+        "Calif.": "CA",
+        "Fla.": "FL",
+        "Tex.": "TX",
+        "Ga.": "GA",
+        "N.Y.": "NY",
+        "Ill.": "IL",
+        "Ohio": "OH",
+        "Nev.": "NV",
+        "Wash.": "WA",
+        "Ore.": "OR",
+        "Ariz.": "AZ",
+        "Mass.": "MA",
+        "Pa.": "PA",
+        "Mich.": "MI",
+        "N.C.": "NC",
+        "S.C.": "SC",
+        # add more as needed
+    }
+
+    state = STATE_MAP.get(state_raw, state_raw)  # fallback to raw if not in map
+    return city, state
+
+def parse_rivals_high_school(high_school_raw: str) -> Tuple[str, Optional[str], Optional[str]]:
+    """
+    Parse a Rivals high school string into (school_name, city, state).
+    
+    Example:
+        'William Penn Charter (Malvern, PA)' -> 
+        ('William Penn Charter', 'Malvern', 'PA')
+    """
+    high_school_raw = high_school_raw.strip()
+    
+    # Match "School Name (City, State)"
+    match = re.match(r"^(.*?)\s*\((.*?),\s*(.*?)\)$", high_school_raw)
+    if match:
+        school_name = match.group(1).strip()
+        city = match.group(2).strip()
+        state = match.group(3).strip()
+        return school_name, city, state
+    else:
+        # fallback if format doesn't match
+        return high_school_raw, None, None
+
+def normalize_position(pos: str) -> str:
+    """
+    Convert position names to standard abbreviations.
+    """
+    pos = pos.strip().lower()
+    mapping = {
+        "point guard": "PG",
+        "shooting guard": "SG",
+        "small forward": "SF",
+        "power forward": "PF",
+        "center": "C",
+    }
+    return mapping.get(pos, pos.upper())  # fallback to uppercase
