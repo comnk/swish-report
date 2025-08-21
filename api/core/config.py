@@ -1,6 +1,10 @@
 from openai import OpenAI
+from googleapiclient.discovery import build
+from dotenv import load_dotenv
 
 import os
+
+load_dotenv()
 
 def set_openai():
     OPENAI_KEY = os.getenv('OPENAI_KEY')
@@ -9,3 +13,8 @@ def set_openai():
     
     client = OpenAI(api_key=OPENAI_KEY)
     return client
+
+def set_youtube_key():
+    YOUTUBE_KEY = os.getenv("YOUTUBE_KEY")
+    youtube = build('youtube', 'v3', developerKey=YOUTUBE_KEY)
+    return youtube

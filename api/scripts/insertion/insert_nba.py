@@ -28,7 +28,7 @@ async def insert_nba_players(cursor, player_list):
         # Check for existing player
         cursor.execute("""
             SELECT player_uid FROM players
-            WHERE full_name=%s AND class_year=%s
+            WHERE full_name=%s AND draft_year=%s
         """, (full_name, draft_year))
         row = cursor.fetchone()
 
@@ -36,7 +36,7 @@ async def insert_nba_players(cursor, player_list):
             player_uid = row[0]
         else:
             cursor.execute("""
-                INSERT INTO players (full_name, class_year, current_level)
+                INSERT INTO players (full_name, draft_year, current_level)
                 VALUES (%s, %s, 'NBA')
             """, (full_name, draft_year))
             player_uid = cursor.lastrowid

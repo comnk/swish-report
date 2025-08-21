@@ -3,6 +3,28 @@ from datetime import date, datetime
 from typing import Tuple, Optional
 from rapidfuzz import fuzz
 
+from ..core.config import set_youtube_key
+
+def get_youtube_videos(full_name: str, class_year: str):
+    youtube = set_youtube_key()
+
+    request = youtube.search().list(
+        part="snippet",
+        maxResults=3,
+        q=f"{full_name} high school basketball {class_year}",
+        type="video",
+        videoEmbeddable="true"
+    )
+
+    response = request.execute()
+    
+    videos = []
+    for item in response.get("items", []):
+        video_id = item["id"]["videoId"]
+        videos.append(f"https://www.youtube.com/watch?v={video_id}")
+    
+    return videos
+
 def parse_school(source: str,
                 high_school_raw: str = "",
                 hometown_raw: str = "") -> Tuple[str, Optional[str], Optional[str]]:

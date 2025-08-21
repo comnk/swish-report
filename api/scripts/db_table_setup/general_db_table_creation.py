@@ -8,15 +8,15 @@ cursor.execute("CREATE DATABASE IF NOT EXISTS swish_report")
 cnx.close()
 
 cursor.execute("""
-CREATE TABLE IF NOT EXISTS players (
+CREATE TABLE players (
     player_uid INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(255) NOT NULL,
-    class_year INT NOT NULL,
-    current_level VARCHAR(50) NOT NULL DEFAULT 'NBA',
+    current_level ENUM('HS','COLLEGE','INTERNATIONAL','G-LEAGUE','NBA') NULL DEFAULT 'NBA',
+    class_year INT NULL,
+    draft_year INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uniq_fullname_classyear (full_name, class_year)
-) ENGINE=InnoDB;
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 """)
 
 cursor.execute("""

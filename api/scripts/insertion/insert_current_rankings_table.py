@@ -99,7 +99,6 @@ async def load_current_player_rankings_async():
 
 
 async def main():
-    result = await load_current_player_rankings_async()
-    print(result)
+    await load_current_player_rankings_async()
 
 asyncio.run(main())

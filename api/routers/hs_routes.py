@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from ..core.db import get_db_connection
+from ..utils.hs_helpers import get_youtube_videos
 from typing import List, Dict
 import json
 
@@ -103,6 +104,32 @@ def get_highschool_player(player_id: int):
         
         return row
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+
+@router.get("/prospects/{player_id}/videos", response_model=List[str])
+def get_high_school_player_videos(player_id: int):
+    select_sql = """
+    SELECT full_name, class_year
+    FROM players
+    WHERE player_uid = %s
+    AND class_year IS NOT NULL;
+    """
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True, buffered=True)
+        cursor.execute(select_sql, (player_id,))
+        row = cursor.fetchone()
+        
+        youtube_videos = get_youtube_videos(row["full_name"], row["class_year"])
+        return youtube_videos
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

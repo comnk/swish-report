@@ -109,7 +109,7 @@ export default function SubmitPlayerPage() {
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-black transition-colors"
                         placeholder="Enter player's full name"
                         required
                     />
@@ -124,7 +124,7 @@ export default function SubmitPlayerPage() {
                         name="position"
                         value={formData.position}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                        className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                         required
                     >
                         <option value="">Select Position</option>
@@ -156,7 +156,7 @@ export default function SubmitPlayerPage() {
                         name="height"
                         value={formData.height}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                        className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                         placeholder="e.g., 6'3&quot;"
                         required
                     />
@@ -172,7 +172,7 @@ export default function SubmitPlayerPage() {
                         name="weight"
                         value={formData.weight}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                        className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                         placeholder="e.g., 185 lbs"
                         required
                     />
@@ -201,7 +201,7 @@ export default function SubmitPlayerPage() {
                         name="espnLink"
                         value={formData.espnLink}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                        className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                         placeholder="https://www.espn.com/college-sports/basketball/recruiting/player/..."
                     />
                     </div>
@@ -216,7 +216,7 @@ export default function SubmitPlayerPage() {
                         name="sports247Link"
                         value={formData.sports247Link}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                        className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                         placeholder="https://247sports.com/player/..."
                     />
                     </div>
@@ -231,7 +231,7 @@ export default function SubmitPlayerPage() {
                         name="rivalsLink"
                         value={formData.rivalsLink}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                        className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                         placeholder="https://rivals.com/content/prospects/..."
                     />
                     </div>
