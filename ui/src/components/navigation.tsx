@@ -40,11 +40,10 @@ export default function Navigation() {
                     <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
                 </Link>
                 ))}
-                <Link href="/submit-player" className="text-black hover:text-orange-300 transition-colors">
-        +            Submit Player
-        +       </Link>
                 <button className="bg-orange-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-700 transition-colors">
-                Get Started
+                    <Link href="/submit-player" className="text-slate-700">
+            +            Submit Player
+            +       </Link>
                 </button>
             </div>
 

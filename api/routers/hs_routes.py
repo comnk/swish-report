@@ -1,10 +1,17 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from ..core.db import get_db_connection
 from ..utils.hs_helpers import get_youtube_videos
-from typing import List, Dict
+from typing import List, Dict, Optional
 import json
 
 router = APIRouter()
+
+class PlayerSubmission(BaseModel):
+    name: str
+    espn_link: Optional[str] = None
+    sports247_link: Optional[str] = None
+    rivals_link: Optional[str] = None
 
 @router.get("/prospects", response_model=List[Dict])
 def get_highschool_prospects():
@@ -130,6 +137,37 @@ def get_high_school_player_videos(player_id: int):
         youtube_videos = get_youtube_videos(row["full_name"], row["class_year"])
         return youtube_videos
         
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+
+@router.post("/prospects/submit-player", response_model=Dict)
+def submit_high_school_player(submission: PlayerSubmission):
+    insert_sql = """
+    INSERT INTO high_school_players (full_name, espn_link, sports247_link, rivals_link)
+    VALUES (%s, %s, %s, %s)
+    RETURNING player_id, full_name, class_year;
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            insert_sql,
+            (submission.name, submission.espn_link, submission.sports247_link, submission.rivals_link)
+        )
+        row = cursor.fetchone()
+        conn.commit()
+        
+        if not row:
+            raise HTTPException(status_code=400, detail="Failed to insert player")
+
+        youtube_videos = get_youtube_videos(row["full_name"], row["class_year"])
+        return {"player": row, "youtube_videos": youtube_videos}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

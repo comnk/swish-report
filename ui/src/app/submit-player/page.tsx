@@ -2,73 +2,73 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, User, Ruler, Weight, Target, ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function SubmitPlayerPage() {
     const [formData, setFormData] = useState({
         name: '',
-        height: '',
-        weight: '',
-        position: '',
         espnLink: '',
         sports247Link: '',
         rivalsLink: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [errorMessage, setErrorMessage] = useState('');
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-        ...prev,
-        [name]: value
-        }));
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        
-        // Simulate API call
-        setTimeout(() => {
-        setIsSubmitting(false);
+        setSubmitStatus('idle');
+        setErrorMessage('');
+
+        try {
+        const res = await fetch('/api/prospects/submit-player', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+            name: formData.name,
+            espn_link: formData.espnLink || null,
+            sports247_link: formData.sports247Link || null,
+            rivals_link: formData.rivalsLink || null
+            })
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.detail || 'Submission failed');
+        }
+
+        await res.json(); // Can use returned data if needed
         setSubmitStatus('success');
-        // Reset form after success
-        setTimeout(() => {
-            setFormData({
-            name: '',
-            height: '',
-            weight: '',
-            position: '',
-            espnLink: '',
-            sports247Link: '',
-            rivalsLink: ''
-            });
-            setSubmitStatus('idle');
-        }, 3000);
-        }, 2000);
+        setFormData({ name: '', espnLink: '', sports247Link: '', rivalsLink: '' });
+        } catch (err: any) {
+        console.error(err);
+        setErrorMessage(err.message || 'An unknown error occurred');
+        setSubmitStatus('error');
+        } finally {
+        setIsSubmitting(false);
+        }
     };
 
-    const isFormValid = formData.name && formData.height && formData.weight && formData.position;
+    const isFormValid = !!formData.name;
 
     return (
         <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-white border-b">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <Link
-                href="/"
-                className="inline-flex items-center text-gray-600 hover:text-orange-600 transition-colors mb-4"
-            >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Home
+            <Link href="/" className="inline-flex items-center text-gray-600 hover:text-orange-600 transition-colors mb-4">
+                <ArrowLeft className="w-4 h-4 mr-2" /> Back to Home
             </Link>
-            
             <div className="text-center">
                 <h1 className="text-3xl font-bold text-gray-900">Submit Missing Player</h1>
                 <p className="mt-2 text-gray-600 max-w-2xl mx-auto">
-                Help us expand our database by submitting information about high school players 
-                who aren't currently in our system. Our AI will generate a comprehensive scouting report.
+                Help us expand our database by submitting information about high school players who aren't currently in our system.
                 </p>
             </div>
             </div>
@@ -88,17 +88,27 @@ export default function SubmitPlayerPage() {
             </div>
             )}
 
+            {/* Error Message */}
+            {submitStatus === 'error' && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
+                <AlertCircle className="w-5 h-5 text-red-600 mr-3" />
+                <div>
+                <h3 className="text-red-800 font-semibold">Submission Failed</h3>
+                <p className="text-red-700 text-sm">{errorMessage}</p>
+                </div>
+            </div>
+            )}
+
             {/* Form */}
             <div className="bg-white rounded-lg shadow-sm p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Basic Information */}
                 <div>
                 <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <User className="w-5 h-5 text-orange-600 mr-2" />
-                    Basic Information
+                    <ExternalLink className="w-5 h-5 text-orange-600 mr-2" />
+                    Player Information
                 </h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <div className="space-y-4">
                     <div>
                     <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
                         Full Name *
@@ -115,82 +125,6 @@ export default function SubmitPlayerPage() {
                     />
                     </div>
 
-                    <div>
-                    <label htmlFor="position" className="block text-sm font-medium text-gray-700 mb-2">
-                        Position *
-                    </label>
-                    <select
-                        id="position"
-                        name="position"
-                        value={formData.position}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                        required
-                    >
-                        <option value="">Select Position</option>
-                        <option value="PG">Point Guard (PG)</option>
-                        <option value="SG">Shooting Guard (SG)</option>
-                        <option value="SF">Small Forward (SF)</option>
-                        <option value="PF">Power Forward (PF)</option>
-                        <option value="C">Center (C)</option>
-                    </select>
-                    </div>
-                </div>
-                </div>
-
-                {/* Physical Attributes */}
-                <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <Ruler className="w-5 h-5 text-orange-600 mr-2" />
-                    Physical Attributes
-                </h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                    <label htmlFor="height" className="block text-sm font-medium text-gray-700 mb-2">
-                        Height *
-                    </label>
-                    <input
-                        type="text"
-                        id="height"
-                        name="height"
-                        value={formData.height}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                        placeholder="e.g., 6'3&quot;"
-                        required
-                    />
-                    </div>
-
-                    <div>
-                    <label htmlFor="weight" className="block text-sm font-medium text-gray-700 mb-2">
-                        Weight *
-                    </label>
-                    <input
-                        type="text"
-                        id="weight"
-                        name="weight"
-                        value={formData.weight}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                        placeholder="e.g., 185 lbs"
-                        required
-                    />
-                    </div>
-                </div>
-                </div>
-
-                {/* Recruiting Links */}
-                <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <ExternalLink className="w-5 h-5 text-orange-600 mr-2" />
-                    Recruiting Profile Links
-                </h2>
-                <p className="text-sm text-gray-600 mb-4">
-                    Provide at least one recruiting profile link to help us gather additional information.
-                </p>
-                
-                <div className="space-y-4">
                     <div>
                     <label htmlFor="espnLink" className="block text-sm font-medium text-gray-700 mb-2">
                         ESPN Recruiting Link
@@ -238,7 +172,6 @@ export default function SubmitPlayerPage() {
                 </div>
                 </div>
 
-                {/* Submit Button */}
                 <div className="pt-4">
                 <button
                     type="submit"
@@ -248,32 +181,21 @@ export default function SubmitPlayerPage() {
                     {isSubmitting ? (
                     <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Processing...
+                        Submitting...
                     </>
                     ) : (
-                    'Submit Player for Review'
+                    'Submit Player'
                     )}
                 </button>
-                
+
                 {!isFormValid && (
                     <p className="mt-2 text-sm text-gray-500 flex items-center">
                     <AlertCircle className="w-4 h-4 mr-1" />
-                    Please fill in all required fields (marked with *)
+                    Please enter the player’s name
                     </p>
                 )}
                 </div>
             </form>
-            </div>
-
-            {/* Additional Information */}
-            <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-blue-800 font-semibold mb-2">What happens next?</h3>
-            <ul className="text-blue-700 text-sm space-y-1">
-                <li>• Our team will review the submitted information within 24-48 hours</li>
-                <li>• We'll gather additional data from the provided recruiting links</li>
-                <li>• Our AI will generate a comprehensive scouting report</li>
-                <li>• The player will be added to our database and searchable by all users</li>
-            </ul>
             </div>
         </div>
         </div>
