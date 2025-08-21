@@ -1,29 +1,50 @@
 import re
 from datetime import date, datetime
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 from rapidfuzz import fuzz
 
 from ..core.config import set_youtube_key
 
-def get_youtube_videos(full_name: str, class_year: str):
-    youtube = set_youtube_key()
+def get_youtube_videos(full_name: str, class_year: str, threshold: int = 85, max_videos: int = 3) -> List[str]:
+    """
+    Fetch YouTube videos for a given high school basketball player,
+    filtering by fuzzy match on the player's full name, returning at most max_videos,
+    prioritizing the most recent high school videos.
 
+    Args:
+        full_name (str): Player's full name.
+        class_year (str): Player's graduating class year.
+        threshold (int): Minimum fuzzy match score to include a video.
+        max_videos (int): Maximum number of videos to return.
+
+    Returns:
+        List[str]: List of YouTube video URLs matching the player.
+    """
+    youtube = set_youtube_key()
     request = youtube.search().list(
         part="snippet",
-        maxResults=3,
+        maxResults=10,  # Fetch more to filter down
         q=f"{full_name} high school basketball {class_year}",
         type="video",
-        videoEmbeddable="true"
+        videoEmbeddable="true",
+        order="date"  # Sorts by newest first
     )
-
     response = request.execute()
-    
-    videos = []
+    videos_with_score = []
+
     for item in response.get("items", []):
-        video_id = item["id"]["videoId"]
-        videos.append(f"https://www.youtube.com/watch?v={video_id}")
-    
-    return videos
+        video_title = item["snippet"]["title"]
+        score = fuzz.partial_ratio(full_name.lower(), video_title.lower())
+        if score >= threshold:
+            video_id = item["id"]["videoId"]
+            published_at = item["snippet"]["publishedAt"]
+            # Convert publishedAt to datetime for sorting if needed
+            published_dt = datetime.fromisoformat(published_at.replace("Z", "+00:00"))
+            videos_with_score.append((score, published_dt, f"https://www.youtube.com/watch?v={video_id}"))
+
+    # Sort primarily by fuzzy match score, secondarily by most recent date
+    videos_with_score.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    return [url for _, _, url in videos_with_score[:max_videos]]
 
 def parse_school(source: str,
                 high_school_raw: str = "",
