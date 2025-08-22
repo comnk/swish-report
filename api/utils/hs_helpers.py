@@ -25,7 +25,8 @@ def get_youtube_videos(full_name: str, class_year: str, threshold: int = 85, max
         maxResults=10,  # Fetch more to filter down
         q=f"{full_name} high school basketball {class_year}",
         type="video",
-        videoEmbeddable="true"
+        videoEmbeddable="true",
+        videoDuration="medium"
     )
     response = request.execute()
     videos_with_score = []

@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from ..core.db import get_db_connection
 from ..utils.hs_helpers import get_youtube_videos
+from ..scripts.insertion.insert_missing_hs_player import insert_hs_player, create_hs_player_analysis
 from typing import List, Dict, Optional
 import json
 
@@ -30,7 +31,7 @@ def get_highschool_prospects():
         COALESCE(ai.ai_analysis, 'A highly talented high school prospect with excellent scoring ability and strong athletic traits.') AS aiAnalysis
     FROM players AS p
     INNER JOIN high_school_player_rankings AS hspr ON hspr.player_uid = p.player_uid
-    LEFT JOIN ai_generated_high_school_evaluations AS ai ON ai.player_id = p.player_uid
+    LEFT JOIN ai_generated_high_school_evaluations AS ai ON ai.player_uid = p.player_uid
     WHERE hspr.source = '247sports' AND p.class_year IS NOT NULL;
     """
     try:
@@ -78,7 +79,7 @@ def get_highschool_player(player_id: int):
         COALESCE(ai.ai_analysis, 'A highly talented high school prospect with excellent scoring ability and strong athletic traits.') AS aiAnalysis
     FROM players AS p
     INNER JOIN high_school_player_rankings AS hspr ON hspr.player_uid = p.player_uid
-    LEFT JOIN ai_generated_high_school_evaluations AS ai ON ai.player_id = p.player_uid
+    LEFT JOIN ai_generated_high_school_evaluations AS ai ON ai.player_uid = p.player_uid
     WHERE p.player_uid = %s AND p.class_year IS NOT NULL;
     """
     try:
@@ -146,32 +147,30 @@ def get_high_school_player_videos(player_id: int):
             conn.close()
 
 @router.post("/prospects/submit-player", response_model=Dict)
-def submit_high_school_player(submission: PlayerSubmission):
-    insert_sql = """
-    INSERT INTO high_school_players (full_name, espn_link, sports247_link, rivals_link)
-    VALUES (%s, %s, %s, %s)
-    RETURNING player_id, full_name, class_year;
-    """
+async def submit_high_school_player(submission: PlayerSubmission):
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute(
-            insert_sql,
-            (submission.name, submission.espn_link, submission.sports247_link, submission.rivals_link)
+        player_info = await insert_hs_player(
+            submission.name,
+            submission.sports247_link,
+            submission.espn_link,
+            submission.rivals_link
         )
-        row = cursor.fetchone()
-        conn.commit()
         
-        if not row:
-            raise HTTPException(status_code=400, detail="Failed to insert player")
-
-        youtube_videos = get_youtube_videos(row["full_name"], row["class_year"])
-        return {"player": row, "youtube_videos": youtube_videos}
-
+        analysis_info = await create_hs_player_analysis(player_info["player_uid"])
+        
+        if analysis_info.get("status") != "success":
+            return {
+                "status": "fail",
+                "message": f"Player analysis failed for {submission.name}.",
+                "player_uid": player_info["player_uid"]
+            }
+        
+        return {
+            "status": "success",
+            "message": f"{submission.name} submitted successfully.",
+            "player_uid": player_info["player_uid"]
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        if 'cursor' in locals():
-            cursor.close()
-        if 'conn' in locals():
-            conn.close()
+        import traceback
+        print(traceback.format_exc())  # log full error
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")

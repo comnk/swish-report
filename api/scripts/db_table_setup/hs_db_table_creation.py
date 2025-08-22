@@ -43,12 +43,16 @@ CREATE TABLE IF NOT EXISTS high_school_player_ranking_history (
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS ai_generated_high_school_evaluations (
     ai_evaluation_id INT AUTO_INCREMENT PRIMARY KEY,
-    player_id INT NOT NULL UNIQUE,
+    player_uid INT NOT NULL,
     stars INT NOT NULL,
     rating INT NOT NULL,
     strengths JSON NOT NULL,
     weaknesses JSON NOT NULL,
-    ai_analysis MEDIUMTEXT NOT NULL
+    ai_analysis MEDIUMTEXT NOT NULL,
+    CONSTRAINT uq_player_uid UNIQUE (player_uid),
+    CONSTRAINT fk_player_uid FOREIGN KEY (player_uid) REFERENCES players(player_uid)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
 );
 """)
 

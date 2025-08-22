@@ -164,8 +164,6 @@ def insert_report(player_id, stars, rating, strengths, weaknesses, ai_analysis):
 
 def ai_report_exists(player_id, class_year):
     # fix Jacob Wilkins later because why
-    if (int(class_year) <= datetime.now().year):
-        return True
     
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -173,6 +171,10 @@ def ai_report_exists(player_id, class_year):
     exists = cursor.fetchone() is not None
     cursor.close()
     conn.close()
+    
+    if (exists and int(class_year) <= datetime.now().year):
+        return True
+    
     return exists
 
 def safe_process_player(player):
@@ -184,7 +186,7 @@ def safe_process_player(player):
     # Skip if AI report already exists for this player
     if ai_report_exists(player_id, class_year):
         print(f"Skipping {player_name}, AI report already exists.")
-        return player_name, True  # Treat as success so no retry needed
+        return player_name, True
 
     # Fetch the player's ranking info for context
     ranking_info = fetch_player_rankings(player_name)
