@@ -29,18 +29,6 @@ CREATE TABLE IF NOT EXISTS high_school_player_rankings (
 """)
 
 cursor.execute("""
-CREATE TABLE IF NOT EXISTS high_school_player_ranking_history (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    player_uid INT NOT NULL,
-    snapshot_date DATE NOT NULL,
-    source ENUM('247sports') NOT NULL,
-    player_rank INT DEFAULT NULL,
-    player_rating INT,
-    FOREIGN KEY (player_uid) REFERENCES players(player_uid)
-);
-""")
-
-cursor.execute("""
 CREATE TABLE IF NOT EXISTS ai_generated_high_school_evaluations (
     ai_evaluation_id INT AUTO_INCREMENT PRIMARY KEY,
     player_uid INT NOT NULL,

@@ -4,7 +4,7 @@ import json
 
 async def launch_browser(headless=True):
     playwright = await async_playwright().start()
-    browser = await playwright.chromium.launch(headless=headless)
+    browser = await playwright.chromium.launch(headless=headless, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"])
     return playwright, browser
 
 

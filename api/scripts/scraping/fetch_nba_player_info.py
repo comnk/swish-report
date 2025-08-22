@@ -45,9 +45,8 @@ def compute_player_hash(player_tuple):
     serialized = json.dumps(fields_to_hash, sort_keys=True)
     return hashlib.md5(serialized.encode()).hexdigest()
 
-async def scrape_player(browser, data, delay_range=(2,5)):
+async def scrape_player(page, data, delay_range=(2,5)):
     player_url = f"https://www.basketball-reference.com{data['link']}"
-    page = await browser.new_page()
     try:
         await page.set_extra_http_headers({"User-Agent": USER_AGENT})
         await safe_goto(page, player_url)
@@ -137,7 +136,6 @@ async def scrape_player(browser, data, delay_range=(2,5)):
         )
         
         print(player_tuple)
-
         return player_tuple
 
     except Exception:
@@ -148,10 +146,11 @@ async def scrape_player(browser, data, delay_range=(2,5)):
             data.get("weight"), [], None, None, None, None, [], data.get("colleges") or [], [], False
         )
     finally:
-        await page.close()
+        # only delay, no page.close()
         await asyncio.sleep(random.uniform(*delay_range))
 
-async def fetch_nba_players(browser, existing_players=None, batch_size=5, letter_delay_range=(5,10)):
+
+async def fetch_nba_players(browser, existing_players=None, batch_size=2, letter_delay_range=(5,10)):
     if existing_players is None:
         existing_players = {}
 
@@ -161,7 +160,7 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=5, letter
     await page.set_extra_http_headers({"User-Agent": USER_AGENT})
 
     for letter in string.ascii_lowercase:
-        if letter == "x":  # Basketball Reference skips X
+        if letter == "x":
             continue
         url = f"https://www.basketball-reference.com/players/{letter}/"
         await safe_goto(page, url)
@@ -191,9 +190,9 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=5, letter
         # Process in batches
         for i in range(0, len(rows_data), batch_size):
             batch = rows_data[i:i+batch_size]
-            results = await asyncio.gather(*(scrape_player(browser, d) for d in batch), return_exceptions=True)
             
-            for player_tuple in results:
+            for d in batch:
+                player_tuple = await scrape_player(page, d)
                 if isinstance(player_tuple, Exception):
                     print("⚠️ Error scraping player:", player_tuple)
                     continue
@@ -204,6 +203,21 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=5, letter
                 if key in seen_keys:
                     continue
                 seen_keys.add(key)
+                
+                draft_year = player_tuple[10] or (int(player_tuple[3]) if player_tuple[3] else 0)
+                key = (player_tuple[0], draft_year)
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+
+                # --- 🚨 20th century filter ---
+                yearMax = player_tuple[3] or 0
+                accolades = player_tuple[12] or []
+
+                if yearMax <= 2000:
+                    # Only keep if they have accolades (All-Star, Hall of Fame, Champion, etc.)
+                    if not accolades:
+                        continue
 
                 player_hash = compute_player_hash(player_tuple)
                 existing = existing_players.get(key)

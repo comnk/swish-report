@@ -20,9 +20,6 @@ export default function CollegePage() {
           </p>
         </div>
 
-        {/* Search and Filters */}
-        <PlayerSearch level="college" />
-
         {/* Conference Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
           <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
