@@ -25,7 +25,7 @@ WHERE p.full_name = %s AND p.class_year IS NOT NULL;
 
 insert_sql = """
 INSERT INTO ai_generated_high_school_evaluations
-    (player_id, stars, rating, strengths, weaknesses, ai_analysis)
+    (player_uid, stars, rating, strengths, weaknesses, ai_analysis)
 VALUES (%s, %s, %s, %s, %s, %s)
 ON DUPLICATE KEY UPDATE
     stars = VALUES(stars),
@@ -152,22 +152,22 @@ def get_scouting_report_with_retry(player_name, class_year, high_school, ranking
             else:
                 raise
 
-def insert_report(player_id, stars, rating, strengths, weaknesses, ai_analysis):
+def insert_report(player_uid, stars, rating, strengths, weaknesses, ai_analysis):
     conn = get_db_connection()
     cursor = conn.cursor()
     strengths_json = json.dumps(strengths)
     weaknesses_json = json.dumps(weaknesses)
-    cursor.execute(insert_sql, (player_id, stars, rating, strengths_json, weaknesses_json, ai_analysis))
+    cursor.execute(insert_sql, (player_uid, stars, rating, strengths_json, weaknesses_json, ai_analysis))
     conn.commit()
     cursor.close()
     conn.close()
 
-def ai_report_exists(player_id, class_year):
+def ai_report_exists(player_uid, class_year):
     # fix Jacob Wilkins later because why
     
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT 1 FROM ai_generated_high_school_evaluations WHERE player_id = %s LIMIT 1", (player_id,))
+    cursor.execute("SELECT 1 FROM ai_generated_high_school_evaluations WHERE player_uid = %s LIMIT 1", (player_uid,))
     exists = cursor.fetchone() is not None
     cursor.close()
     conn.close()
@@ -178,13 +178,13 @@ def ai_report_exists(player_id, class_year):
     return exists
 
 def safe_process_player(player):
-    player_id = player['player_uid']
+    player_uid = player['player_uid']
     class_year = player['class_year']
     high_school = player['school_name']
     player_name = player['full_name']
 
     # Skip if AI report already exists for this player
-    if ai_report_exists(player_id, class_year):
+    if ai_report_exists(player_uid, class_year):
         print(f"Skipping {player_name}, AI report already exists.")
         return player_name, True
 
@@ -200,7 +200,7 @@ def safe_process_player(player):
             return player_name, False
 
         insert_report(
-            player_id=player_id,
+            player_uid=player_uid,
             stars=parsed.get('stars', None),
             rating=parsed.get('rating', None),
             strengths=parsed.get('strengths', []),

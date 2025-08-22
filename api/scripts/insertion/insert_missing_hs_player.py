@@ -83,8 +83,6 @@ async def create_hs_player_analysis(player_uid):
     class_year = player[2]
     high_school = player[3]
     
-    print(ai_report_exists(player_uid, class_year))
-    
     if (ai_report_exists(player_uid, class_year)):
         return {"status": "fail", "player": player_name, "player_uid": player_uid}
     
@@ -108,7 +106,7 @@ async def create_hs_player_analysis(player_uid):
         return {"status": "fail", "reason": "failed to parse AI response", "player": player_name}
 
     insert_report(
-        player_id=player_uid,
+        player_uid=player_uid,
         stars=parsed.get('stars', None),
         rating=parsed.get('rating', None),
         strengths=parsed.get('strengths', []),
