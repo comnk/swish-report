@@ -218,6 +218,12 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=2, letter
                     # Only keep if they have accolades (All-Star, Hall of Fame, Champion, etc.)
                     if not accolades:
                         continue
+                
+                years_pro = player_tuple[11] or 0
+                is_active = player_tuple[15] or 0
+                
+                if years_pro <= 1 and not is_active:
+                    continue
 
                 player_hash = compute_player_hash(player_tuple)
                 existing = existing_players.get(key)

@@ -30,9 +30,18 @@ def get_highschool_prospects():
         COALESCE(ai.weaknesses, JSON_ARRAY('Defense', 'Consistency')) AS weaknesses,
         COALESCE(ai.ai_analysis, 'A highly talented high school prospect with excellent scoring ability and strong athletic traits.') AS aiAnalysis
     FROM players AS p
-    INNER JOIN high_school_player_rankings AS hspr ON hspr.player_uid = p.player_uid
-    LEFT JOIN ai_generated_high_school_evaluations AS ai ON ai.player_uid = p.player_uid
-    WHERE hspr.source = '247sports' AND p.class_year IS NOT NULL;
+    INNER JOIN high_school_player_rankings AS hspr
+        ON hspr.player_uid = p.player_uid
+    LEFT JOIN ai_generated_high_school_evaluations AS ai
+        ON ai.player_uid = p.player_uid
+    WHERE p.class_year IS NOT NULL
+    AND hspr.source = (
+        SELECT source
+        FROM high_school_player_rankings h2
+        WHERE h2.player_uid = p.player_uid
+        ORDER BY FIELD(h2.source, '247sports', 'espn', 'rivals')  -- priority order
+        LIMIT 1
+    );
     """
     try:
         conn = get_db_connection()

@@ -1,4 +1,5 @@
 import re
+import random
 from datetime import date, datetime
 from typing import Tuple, Optional, List
 from rapidfuzz import fuzz
@@ -9,24 +10,15 @@ def get_youtube_videos(full_name: str, class_year: str, threshold: int = 85, max
     """
     Fetch YouTube videos for a given high school basketball player,
     filtering by fuzzy match on the player's full name, returning at most max_videos.
-
-    Args:
-        full_name (str): Player's full name.
-        class_year (str): Player's graduating class year.
-        threshold (int): Minimum fuzzy match score to include a video.
-        max_videos (int): Maximum number of videos to return.
-
-    Returns:
-        List[str]: List of YouTube video URLs matching the player.
+    Adds randomness to avoid always selecting the same top videos.
     """
     youtube = set_youtube_key()
     request = youtube.search().list(
         part="snippet",
-        maxResults=10,  # Fetch more to filter down
+        maxResults=15,  # fetch a few more to increase variety
         q=f"{full_name} high school basketball {class_year}",
         type="video",
         videoEmbeddable="true",
-        videoDuration="medium"
     )
     response = request.execute()
     videos_with_score = []
@@ -38,9 +30,24 @@ def get_youtube_videos(full_name: str, class_year: str, threshold: int = 85, max
             video_id = item["id"]["videoId"]
             videos_with_score.append((score, f"https://www.youtube.com/watch?v={video_id}"))
 
-    # Sort by fuzzy match score descending and return at most max_videos
-    videos_with_score.sort(reverse=True, key=lambda x: x[0])
-    return [url for _, url in videos_with_score[:max_videos]]
+    # Group videos by score to allow shuffling within same-score group
+    score_groups = {}
+    for score, url in videos_with_score:
+        score_groups.setdefault(score, []).append(url)
+
+    selected_videos = []
+    for score in sorted(score_groups.keys(), reverse=True):
+        urls = score_groups[score]
+        random.shuffle(urls)  # shuffle videos with same score
+        for url in urls:
+            if len(selected_videos) < max_videos:
+                selected_videos.append(url)
+            else:
+                break
+        if len(selected_videos) >= max_videos:
+            break
+
+    return selected_videos
 
 def parse_school(source: str,
                 high_school_raw: str = "",
