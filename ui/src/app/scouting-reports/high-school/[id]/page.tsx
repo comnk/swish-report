@@ -12,6 +12,7 @@ import {
     Star,
     Target,
 } from "lucide-react";
+import Navigation from "@/components/navigation";
 
 interface PlayerPageProps {
     params: { id: string };
@@ -56,14 +57,8 @@ export default async function PlayerPage({ params }: PlayerPageProps) {
         <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-white border-b">
+            <Navigation />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <Link
-                href="/high-school"
-                className="inline-flex items-center text-gray-600 hover:text-orange-600 transition-colors mb-4"
-            >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to High School Players
-            </Link>
 
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-center space-x-6">

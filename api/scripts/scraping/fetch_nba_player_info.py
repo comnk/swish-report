@@ -45,10 +45,9 @@ def compute_player_hash(player_tuple):
     serialized = json.dumps(fields_to_hash, sort_keys=True)
     return hashlib.md5(serialized.encode()).hexdigest()
 
-async def scrape_player(page, data, delay_range=(2,5)):
+async def scrape_player(page, data):
     player_url = f"https://www.basketball-reference.com{data['link']}"
     try:
-        await page.set_extra_http_headers({"User-Agent": USER_AGENT})
         await safe_goto(page, player_url)
 
         # Optional "more info" click
@@ -136,6 +135,7 @@ async def scrape_player(page, data, delay_range=(2,5)):
         )
         
         print(player_tuple)
+        
         return player_tuple
 
     except Exception:
@@ -145,28 +145,26 @@ async def scrape_player(page, data, delay_range=(2,5)):
             int(data.get("yearMax") or 0), data["position"], data.get("height"),
             data.get("weight"), [], None, None, None, None, [], data.get("colleges") or [], [], False
         )
-    finally:
-        # only delay, no page.close()
-        await asyncio.sleep(random.uniform(*delay_range))
 
 
-async def fetch_nba_players(browser, existing_players=None, batch_size=2, letter_delay_range=(5,10)):
+async def fetch_nba_players(browser, existing_players=None, batch_size=3, letter_delay_range=(5,10)):
     if existing_players is None:
         existing_players = {}
 
     players_to_insert = []
     seen_keys = set()
-    page = await browser.new_page()
-    await page.set_extra_http_headers({"User-Agent": USER_AGENT})
+    index_page = await browser.new_page()
+    await index_page.set_extra_http_headers({"User-Agent": USER_AGENT})
 
     for letter in string.ascii_lowercase:
         if letter == "x":
             continue
-        url = f"https://www.basketball-reference.com/players/{letter}/"
-        await safe_goto(page, url)
-        await page.wait_for_selector("table#players tbody tr", timeout=15000)
 
-        rows_data = await page.evaluate('''() => {
+        url = f"https://www.basketball-reference.com/players/{letter}/"
+        await safe_goto(index_page, url)
+        await index_page.wait_for_selector("table#players tbody tr", timeout=15000)
+
+        rows_data = await index_page.evaluate('''() => {
             const rows = Array.from(document.querySelectorAll("table#players tbody tr"))
                         .filter(r => !r.classList.contains("thead"));
             return rows.map(row => {
@@ -190,12 +188,13 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=2, letter
         # Process in batches
         for i in range(0, len(rows_data), batch_size):
             batch = rows_data[i:i+batch_size]
-            
+
+            # fresh page for this batch
+            page = await browser.new_page()
+            await page.set_extra_http_headers({"User-Agent": USER_AGENT})
+
             for d in batch:
                 player_tuple = await scrape_player(page, d)
-                if isinstance(player_tuple, Exception):
-                    print("⚠️ Error scraping player:", player_tuple)
-                    continue
 
                 # Normalize draft year
                 draft_year = player_tuple[10] or (int(player_tuple[3]) if player_tuple[3] else 0)
@@ -203,46 +202,35 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=2, letter
                 if key in seen_keys:
                     continue
                 seen_keys.add(key)
-                
-                draft_year = player_tuple[10] or (int(player_tuple[3]) if player_tuple[3] else 0)
-                key = (player_tuple[0], draft_year)
-                if key in seen_keys:
-                    continue
-                seen_keys.add(key)
 
-                # --- 🚨 20th century filter ---
+                # --- 🚨 filter
                 yearMax = player_tuple[3] or 0
                 accolades = player_tuple[12] or []
-
-                if yearMax <= 2000:
-                    # Only keep if they have accolades (All-Star, Hall of Fame, Champion, etc.)
-                    if not accolades:
-                        continue
-                
+                if yearMax <= 2004 and not accolades:
+                    continue
                 years_pro = player_tuple[11] or 0
                 is_active = player_tuple[15] or 0
-                
                 if years_pro <= 1 and not is_active:
                     continue
 
                 player_hash = compute_player_hash(player_tuple)
                 existing = existing_players.get(key)
-                should_update = False
-
-                if not existing:
-                    should_update = True
-                elif existing["hash"] != player_hash:
-                    should_update = True
-                elif (datetime.now() - existing.get("last_scraped", datetime.min)).days > 365:
-                    should_update = True
+                should_update = (
+                    not existing or
+                    existing["hash"] != player_hash or
+                    (datetime.now() - existing.get("last_scraped", datetime.min)).days > 365
+                )
 
                 if should_update:
                     p = list(player_tuple)
-                    p[10] = draft_year  # normalized draft_year
+                    p[10] = draft_year  # normalized
                     players_to_insert.append(tuple(p))
                     existing_players[key] = {"hash": player_hash, "last_scraped": datetime.now()}
 
+            await page.close()
+            await asyncio.sleep(random.uniform(2, 5))  # delay between batches
+
         await asyncio.sleep(random.uniform(*letter_delay_range))
 
-    await page.close()
+    await index_page.close()
     return players_to_insert

@@ -9,21 +9,21 @@ export default function FeaturesSection() {
         icon: GraduationCap,
         title: "High School Scouting",
         description: "Comprehensive evaluations of high school prospects with college recruitment insights and development projections.",
-        href: "/high-school",
+        href: "/scouting-reports/high-school",
         color: "bg-blue-500",
         },
         {
         icon: Trophy,
         title: "College Analysis",
         description: "In-depth analysis of college players including performance metrics, draft stock, and professional potential.",
-        href: "/college",
+        href: "/scouting-reports/college",
         color: "bg-green-500",
         },
         {
         icon: Star,
         title: "NBA Evaluation",
         description: "Advanced NBA player analysis covering current performance, career trajectories, and trade value assessments.",
-        href: "/nba",
+        href: "/scouting-reports/nba",
         color: "bg-purple-500",
         },
         {
@@ -37,7 +37,7 @@ export default function FeaturesSection() {
         icon: Users,
         title: "Team Building",
         description: "Strategic insights for roster construction, player combinations, and team chemistry optimization.",
-        href: "/teams",
+        href: "/games/lineup-builder",
         color: "bg-red-500",
         },
         {

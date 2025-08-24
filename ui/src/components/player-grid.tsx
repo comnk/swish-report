@@ -102,7 +102,7 @@ export default function PlayerGrid({ players, level }: PlayerGridProps) {
                 <Link
                     href={
                     level === "high-school"
-                        ? `/high-school/${player.id}`
+                        ? `/scouting-reports/high-school/${player.id}`
                         : level === "nba"
                         ? `/nba/${player.id}`
                         : "#"

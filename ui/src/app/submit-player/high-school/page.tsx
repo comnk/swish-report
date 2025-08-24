@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
+import Navigation from '@/components/navigation';
 
 export default function SubmitPlayerPage() {
     const router = useRouter();
@@ -65,11 +66,10 @@ export default function SubmitPlayerPage() {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
+            <Navigation />
             <div className="bg-white border-b">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                    <Link href="/" className="inline-flex items-center text-gray-600 hover:text-orange-600 transition-colors mb-4">
-                        <ArrowLeft className="w-4 h-4 mr-2" /> Back to Home
-                    </Link>
+                    
                     <div className="text-center">
                         <h1 className="text-3xl font-bold text-gray-900">Submit Missing Player</h1>
                         <p className="mt-2 text-gray-600 max-w-2xl mx-auto">

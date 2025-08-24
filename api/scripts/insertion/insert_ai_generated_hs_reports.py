@@ -13,7 +13,14 @@ client = set_openai()
 select_sql = """
 SELECT p.player_uid, p.full_name, hspr.class_year, hspr.school_name FROM players AS p
 INNER JOIN high_school_player_rankings AS hspr ON hspr.player_uid = p.player_uid
-WHERE hspr.source = '247sports' AND p.class_year IS NOT NULL;
+WHERE p.class_year IS NOT NULL
+AND hspr.source = (
+    SELECT source
+    FROM high_school_player_rankings h2
+    WHERE h2.player_uid = p.player_uid
+    ORDER BY FIELD(h2.source, '247sports', 'espn', 'rivals')  -- priority order
+    LIMIT 1
+);
 """
 
 select_sql_per_player = """

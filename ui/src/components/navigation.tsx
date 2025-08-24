@@ -2,17 +2,34 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, X, BarChart3 } from "lucide-react";
+import { Menu, X, BarChart3, ChevronDown } from "lucide-react";
 
 export default function Navigation() {
     const [isOpen, setIsOpen] = useState(false);
+    const [openDropdown, setOpenDropdown] = useState<string | null>(null); // Track which dropdown is open
 
-    const navItems = [
-        { name: "High School", href: "/high-school" },
-        { name: "College", href: "/college" },
-        { name: "NBA", href: "/nba" },
-        
+    const scoutingItems = [
+        { name: "High School", href: "/scouting-reports/high-school" },
+        { name: "College", href: "/scouting-reports/college" },
+        { name: "NBA", href: "/scouting-reports/nba" },
     ];
+
+    const gameItems = [
+        { name: "Lineup Builder", href: "/games/lineup-builder" },
+        { name: "Prediction Challenges", href: "/games/prediction-challenges" },
+    ];
+
+    const submitItems = [
+        { name: "High School", href: "/submit-player/high-school" },
+        { name: "College", href: "/submit-player/college" },
+        { name: "NBA", href: "/submit-player/nba" },
+    ];
+
+    const toggleDropdown = (name: string) => {
+        setOpenDropdown(openDropdown === name ? null : name);
+    };
+
+    const closeDropdowns = () => setOpenDropdown(null);
 
     return (
         <nav className="bg-white/95 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-50">
@@ -30,21 +47,44 @@ export default function Navigation() {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-8">
-                {navItems.map((item) => (
-                <Link
-                    key={item.name}
-                    href={item.href}
-                    className="text-slate-700 hover:text-orange-600 font-medium transition-colors relative group"
-                >
-                    {item.name}
-                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-600 transition-all group-hover:w-full"></span>
-                </Link>
+                {/** Dropdown Template */}
+                {[
+                { name: "Scouting Reports", items: scoutingItems },
+                { name: "Games", items: gameItems },
+                { name: "Submit Missing Player", items: submitItems },
+                ].map((dropdown) => (
+                <div key={dropdown.name} className="relative group">
+                    <button
+                    onClick={() => toggleDropdown(dropdown.name)}
+                    className="flex items-center text-slate-700 hover:text-orange-600 font-medium transition-colors"
+                    >
+                    {dropdown.name} <ChevronDown className="h-4 w-4 ml-1" />
+                    </button>
+
+                    {openDropdown === dropdown.name && (
+                    <div className={`absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-slate-200 py-2 z-50`}>
+                        {dropdown.items.map((item) => (
+                        <Link
+                            key={item.name}
+                            href={item.href}
+                            className="block px-4 py-2 text-slate-700 hover:bg-orange-50 hover:text-orange-600"
+                            onClick={closeDropdowns}
+                        >
+                            {item.name}
+                        </Link>
+                        ))}
+                    </div>
+                    )}
+                </div>
                 ))}
-                <button className="bg-orange-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-700 transition-colors">
-                    <Link href="/submit-player" className="text-slate-700">
-            +            Submit Player
-            +       </Link>
-                </button>
+
+                {/* Log In Button */}
+                <Link
+                href="/login"
+                className="border border-orange-600 text-orange-600 px-6 py-2 rounded-lg font-medium hover:bg-orange-50 transition-colors"
+                >
+                Log In
+                </Link>
             </div>
 
             {/* Mobile menu button */}
@@ -62,23 +102,53 @@ export default function Navigation() {
             {isOpen && (
             <div className="md:hidden py-4 border-t border-slate-200">
                 <div className="flex flex-col space-y-4">
-                {navItems.map((item) => (
-                    <Link
-                    key={item.name}
-                    href={item.href}
-                    className="text-slate-700 hover:text-orange-600 font-medium transition-colors px-2 py-1"
-                    onClick={() => setIsOpen(false)}
+                {[
+                    { name: "Scouting Reports", items: scoutingItems },
+                    { name: "Games", items: gameItems },
+                    { name: "Submit Missing Player", items: submitItems },
+                ].map((dropdown) => (
+                    <div key={dropdown.name}>
+                    <button
+                        onClick={() => toggleDropdown(dropdown.name)}
+                        className={`flex items-center justify-between w-full ${
+                        dropdown.name === "Submit Missing Player"
+                            ? "bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700"
+                            : "text-slate-700 hover:text-orange-600 font-medium px-2 py-1"
+                        } transition-colors`}
                     >
-                    {item.name}
-                    </Link>
+                        {dropdown.name} <ChevronDown className="h-4 w-4 ml-1" />
+                    </button>
+                    {openDropdown === dropdown.name && (
+                        <div className="ml-4 mt-2 flex flex-col space-y-2">
+                        {dropdown.items.map((item) => (
+                            <Link
+                            key={item.name}
+                            href={item.href}
+                            className="text-slate-600 hover:text-orange-600 transition-colors"
+                            onClick={() => {
+                                closeDropdowns();
+                                setIsOpen(false);
+                            }}
+                            >
+                            {item.name}
+                            </Link>
+                        ))}
+                        </div>
+                    )}
+                    </div>
                 ))}
-                <button className="bg-orange-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-700 transition-colors w-fit">
-                    Get Started
-                </button>
+
+                <Link
+                    href="/login"
+                    className="border border-orange-600 text-orange-600 px-6 py-2 rounded-lg font-medium hover:bg-orange-50 transition-colors w-fit"
+                    onClick={() => setIsOpen(false)}
+                >
+                    Log In
+                </Link>
                 </div>
             </div>
             )}
         </div>
         </nav>
     );
-    }
+}
