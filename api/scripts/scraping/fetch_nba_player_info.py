@@ -13,16 +13,29 @@ USER_AGENT = (
     "Chrome/115.0.0.0 Safari/537.36"
 )
 
-async def safe_goto(page, url, max_retries=3):
+async def safe_goto(browser, page, url, max_retries=3):
     for attempt in range(max_retries):
         try:
-            await page.goto(url, wait_until='domcontentloaded', timeout=40000)
-            return
+            await page.goto(url, wait_until="domcontentloaded", timeout=40000)
+            return page
         except Exception as e:
             print(f"⚠️ Navigation failed (attempt {attempt+1}) for {url}: {e}")
+            try:
+                await page.close()
+            except:
+                pass
+
+            # fresh context+page for retry
+            context = await browser.new_context()
+            page = await context.new_page()
+            await page.set_extra_http_headers({"User-Agent": USER_AGENT})
+
             if attempt == max_retries - 1:
                 raise
-            await asyncio.sleep(5 + random.random()*5)
+            await asyncio.sleep(5 + random.random() * 5)
+
+    return page
+
 
 def normalize_list(value):
     return value if value else []
@@ -45,10 +58,15 @@ def compute_player_hash(player_tuple):
     serialized = json.dumps(fields_to_hash, sort_keys=True)
     return hashlib.md5(serialized.encode()).hexdigest()
 
-async def scrape_player(page, data):
+async def scrape_player(browser, _, data):  # "_" = unused player_page param
     player_url = f"https://www.basketball-reference.com{data['link']}"
+    page = None
     try:
-        await safe_goto(page, player_url)
+        context = await browser.new_context()
+        page = await context.new_page()
+        await page.set_extra_http_headers({"User-Agent": USER_AGENT})
+
+        await safe_goto(browser, page, player_url)
 
         # Optional "more info" click
         try:
@@ -84,7 +102,6 @@ async def scrape_player(page, data):
         }''')
 
         years_pro = draft_round = draft_pick = draft_year = high_schools = None
-        is_active = False
 
         for p_text in info_paragraphs:
             text_lower = p_text.lower()
@@ -145,6 +162,9 @@ async def scrape_player(page, data):
             int(data.get("yearMax") or 0), data["position"], data.get("height"),
             data.get("weight"), [], None, None, None, None, [], data.get("colleges") or [], [], False
         )
+    finally:
+        if page:
+            await page.close()
 
 
 async def fetch_nba_players(browser, existing_players=None, batch_size=3, letter_delay_range=(5,10)):
@@ -153,6 +173,8 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=3, letter
 
     players_to_insert = []
     seen_keys = set()
+
+    # page for scraping letters
     index_page = await browser.new_page()
     await index_page.set_extra_http_headers({"User-Agent": USER_AGENT})
 
@@ -161,8 +183,12 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=3, letter
             continue
 
         url = f"https://www.basketball-reference.com/players/{letter}/"
-        await safe_goto(index_page, url)
-        await index_page.wait_for_selector("table#players tbody tr", timeout=15000)
+        try:
+            index_page = await safe_goto(browser, index_page, url)
+            await index_page.wait_for_selector("table#players tbody tr", timeout=20000)
+        except Exception as e:
+            print(f"⚠️ Failed to load letter {letter}: {e}")
+            continue
 
         rows_data = await index_page.evaluate('''() => {
             const rows = Array.from(document.querySelectorAll("table#players tbody tr"))
@@ -185,18 +211,20 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=3, letter
 
         rows_data = [r for r in rows_data if r["link"]]
 
-        # Process in batches
+        # single page for player batches to reduce memory usage
+        player_page = await browser.new_page()
+        await player_page.set_extra_http_headers({"User-Agent": USER_AGENT})
+
         for i in range(0, len(rows_data), batch_size):
             batch = rows_data[i:i+batch_size]
 
-            # fresh page for this batch
-            page = await browser.new_page()
-            await page.set_extra_http_headers({"User-Agent": USER_AGENT})
-
             for d in batch:
-                player_tuple = await scrape_player(page, d)
+                try:
+                    player_tuple = await scrape_player(browser, None, d)
+                except Exception as e:
+                    print(f"⚠️ Error scraping {d['name']}: {e}")
+                    continue
 
-                # Normalize draft year
                 draft_year = player_tuple[10] or (int(player_tuple[3]) if player_tuple[3] else 0)
                 key = (player_tuple[0], draft_year)
                 if key in seen_keys:
@@ -227,9 +255,9 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=3, letter
                     players_to_insert.append(tuple(p))
                     existing_players[key] = {"hash": player_hash, "last_scraped": datetime.now()}
 
-            await page.close()
             await asyncio.sleep(random.uniform(2, 5))  # delay between batches
 
+        await player_page.close()
         await asyncio.sleep(random.uniform(*letter_delay_range))
 
     await index_page.close()
