@@ -32,7 +32,7 @@ export default function PlayerGrid({ players, level }: PlayerGridProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {shuffledPlayers.map((player) => {
             const displayName =
-            level === "high-school" ? (player as HighSchoolPlayer).full_name : (player as NBAPlayer).name;
+            level === "high-school" ? (player as HighSchoolPlayer).full_name : (player as NBAPlayer).full_name;
 
             const initials = (displayName ?? "")
             .split(" ")
@@ -104,7 +104,7 @@ export default function PlayerGrid({ players, level }: PlayerGridProps) {
                     level === "high-school"
                         ? `/scouting-reports/high-school/${player.id}`
                         : level === "nba"
-                        ? `/nba/${player.id}`
+                        ? `/scouting-reports/nba/${player.id}`
                         : "#"
                     }
                     className="flex-1 bg-orange-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors text-center block"

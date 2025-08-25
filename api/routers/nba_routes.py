@@ -1,20 +1,19 @@
-from fastapi import APIRouter
+import json
+
+from fastapi import APIRouter, HTTPException
 from typing import List
-from pydantic import BaseModel
 
 from ..core.db import get_db_connection
+from ..utils.nba_helpers import get_nba_youtube_videos
 from ..utils.helpers import parse_json_list
-import json
 
 router = APIRouter()
 
-
 @router.get("/players", response_model=List[dict])
 def get_nba_prospects():
+    # Fixed SQL (removed trailing comma) and selected all relevant fields
     cnx = get_db_connection()
     cursor = cnx.cursor()
-
-    # Fixed SQL (removed trailing comma) and selected all relevant fields
     cursor.execute("""
         SELECT
             p.player_uid,
@@ -59,7 +58,90 @@ def get_nba_prospects():
             "is_active": bool(p[12]),
             "accolades": parse_json_list(p[13]),
         })
-    
-    print(result[0]["team_names"])
 
     return result
+
+@router.get("/players/{player_id}")
+def get_nba_player(player_id: int):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True, buffered=True)  # <-- key fix
+        cursor.execute("""
+            SELECT
+                p.player_uid,
+                p.full_name,
+                nba.position,
+                nba.height,
+                nba.weight,
+                nba.years_pro,
+                nba.teams,
+                nba.draft_year,
+                nba.draft_round,
+                nba.draft_pick,
+                nba.colleges,
+                nba.high_schools,
+                nba.is_active,
+                nba.accolades
+            FROM players AS p
+            INNER JOIN nba_player_info AS nba ON p.player_uid = nba.player_uid
+            WHERE p.current_level = 'NBA' AND p.player_uid=%s;
+        """, (player_id,))
+        row = cursor.fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Player not found")
+
+        # Ensure JSON fields are Python lists
+        for field, default in [
+            ("strengths", ["Scoring", "Athleticism", "Court Vision"]),
+            ("weaknesses", ["Defense", "Consistency"])
+        ]:
+            value = row.get(field)
+            if isinstance(value, str):
+                try:
+                    row[field] = json.loads(value)
+                except json.JSONDecodeError:
+                    row[field] = default
+            elif value is None:
+                row[field] = default
+
+        # Rename player_uid to id
+        row["id"] = row.pop("player_uid")
+        
+        return row
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+
+@router.get("/players/{player_id}/videos")
+def get_nba_player_videos(player_id: int):
+    select_sql = """
+    SELECT full_name
+    FROM players
+    WHERE player_uid = %s
+    """
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(select_sql, (player_id,))
+        row = cursor.fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Player not found")
+
+        youtube_videos = get_nba_youtube_videos(row["full_name"])
+        return youtube_videos
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()

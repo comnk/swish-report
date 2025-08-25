@@ -50,7 +50,7 @@ export default function NBAPage() {
 
         const mappedPlayers: NBAPlayer[] = data.map((p) => ({
           id: String(p.player_uid),
-          name: p.full_name,
+          full_name: p.full_name,
           position: p.position,
           height: p.height,
           weight: p.weight,
@@ -96,7 +96,7 @@ export default function NBAPage() {
     // Search filter: name includes search term (case-insensitive)
     const matchesSearch =
       searchTerm === "" ||
-      player.name.toLowerCase().includes(searchTerm.toLowerCase());
+      player.full_name.toLowerCase().includes(searchTerm.toLowerCase());
 
     // Filters: match all selected filters (if any)
     const matchesFilters = Object.entries(selectedFilters).every(([key, value]) => {
@@ -105,11 +105,6 @@ export default function NBAPage() {
       // For stars filter which is numeric but stored as string in filters (e.g. "5")
       if (key === "stars") {
         return player.stars.toString() === value;
-      }
-
-      // For salary filter, do a simple includes for ranges
-      if (key === "salary") {
-        return player.salary?.toLowerCase().includes(value.toLowerCase());
       }
 
       // For other keys, just compare lowercase strings

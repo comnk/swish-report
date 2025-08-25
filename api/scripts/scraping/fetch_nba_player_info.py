@@ -165,6 +165,9 @@ async def scrape_player(browser, _, data):  # "_" = unused player_page param
     finally:
         if page:
             await page.close()
+        
+        if context:
+            await context.close()
 
 
 async def fetch_nba_players(browser, existing_players=None, batch_size=3, letter_delay_range=(5,10)):

@@ -16,13 +16,14 @@ export interface HighSchoolPlayer {
 
 export interface NBAPlayer {
     id: string;
-    name: string;
+    full_name: string;
     position: string;
     height: string;
     weight: string;
     college?: string;
     team_names?: string[];
-    experience?: string; // For NBA
+    years_pro?: string;
+    draft_year?: number,
     stars: number,
     overallRating: number;
     stats?: {
@@ -37,5 +38,4 @@ export interface NBAPlayer {
     strengths: string[];
     weaknesses: string[];
     aiAnalysis: string;
-    salary?: string; // For NBA players
 }
