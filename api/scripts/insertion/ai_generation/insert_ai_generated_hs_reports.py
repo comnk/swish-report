@@ -4,9 +4,9 @@ import re
 import concurrent.futures
 
 from datetime import datetime
-from ...core.db import get_db_connection
-from ...core.config import set_openai
-from ...utils.ai_prompts import SYSTEM_PROMPT, user_content
+from ....core.db import get_db_connection
+from ....core.config import set_openai
+from ....utils.ai_prompts import SYSTEM_PROMPT, user_content
 
 client = set_openai()
 

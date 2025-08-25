@@ -38,9 +38,6 @@ CREATE TABLE IF NOT EXISTS nba_draft_evaluations (
 ) ENGINE=InnoDB;
 """)
 
-# PLAYER INFO: only ONE auto-updating timestamp (updated_at).
-# last_scraped is DATETIME you set from code.
-# JSON requires MySQL 5.7+. If you're on older MySQL/MariaDB, see fallback below.
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS nba_player_info (
     info_uid INT AUTO_INCREMENT PRIMARY KEY,
@@ -84,6 +81,22 @@ CREATE TABLE IF NOT EXISTS nba_player_stats (
     CONSTRAINT fk_nps_player FOREIGN KEY (player_uid)
         REFERENCES players(player_uid) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS ai_generated_nba_evaluations (
+    ai_evaluation_id INT AUTO_INCREMENT PRIMARY KEY,
+    player_uid INT NOT NULL,
+    stars INT NOT NULL,
+    rating INT NOT NULL,
+    strengths JSON NOT NULL,
+    weaknesses JSON NOT NULL,
+    ai_analysis MEDIUMTEXT NOT NULL,
+    CONSTRAINT uq_player_uid UNIQUE (player_uid),
+    CONSTRAINT fk_ai_player_uid FOREIGN KEY (player_uid) REFERENCES players(player_uid)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
 """)
 
 print("Database and tables created successfully!")
