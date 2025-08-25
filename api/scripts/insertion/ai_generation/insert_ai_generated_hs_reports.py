@@ -7,6 +7,7 @@ from datetime import datetime
 from ....core.db import get_db_connection
 from ....core.config import set_openai
 from ....utils.ai_prompts import SYSTEM_PROMPT, user_content
+from ....utils.ai_generation_helpers import fetch_players, parse_json_report, insert_report
 
 client = set_openai()
 
@@ -42,15 +43,6 @@ ON DUPLICATE KEY UPDATE
     ai_analysis = VALUES(ai_analysis);
 """
 
-def fetch_players():
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(select_sql)
-    rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return rows
-
 def fetch_player_rankings(player_name):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -59,81 +51,6 @@ def fetch_player_rankings(player_name):
     cursor.close()
     conn.close()
     return rankings
-
-def clean_markdown_json(text):
-    # Remove ```json ... ``` or ``` ... ``` fences if present
-    fenced_code = re.search(r"```json\s*([\s\S]*?)```", text)
-    if fenced_code:
-        return fenced_code.group(1).strip()
-    fenced_code = re.search(r"```[\s\S]*?```", text)
-    if fenced_code:
-        return fenced_code.group(0).replace("```", "").strip()
-    return text.strip()
-
-def fix_ai_analysis_quotes(text):
-    key = '"aiAnalysis":'
-    idx = text.find(key)
-    if idx == -1:
-        return text
-
-    start_quote = text.find('"', idx + len(key))
-    if start_quote == -1:
-        return text
-
-    result = []
-    i = start_quote + 1
-    while i < len(text):
-        ch = text[i]
-        if ch == '"' and text[i-1] != '\\':
-            # Look ahead to see if this ends the value
-            j = i + 1
-            while j < len(text) and text[j] in " \n\r\t":
-                j += 1
-            if j < len(text) and text[j] in ",}":
-                break  # closing quote
-            result.append('\\"')
-            i += 1
-            continue
-        result.append(ch)
-        i += 1
-
-    fixed_value = ''.join(result)
-    return text[:start_quote+1] + fixed_value + text[i:]
-
-def parse_json_report(text):
-    cleaned = extract_first_json_object(text)
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
-        fixed = fix_ai_analysis_quotes(cleaned)
-        try:
-            return json.loads(fixed)
-        except Exception as e2:
-            print(f"JSON parse error even after cleanup and fix: {e2}\nOriginal text:\n{text}")
-            return None
-
-def extract_first_json_object(text):
-    # First, try to find a code block
-    fenced_code = re.search(r"```json\s*([\s\S]*?)```", text)
-    if fenced_code:
-        text = fenced_code.group(1).strip()
-    else:
-        fenced_code = re.search(r"```([\s\S]*?)```", text)
-        if fenced_code:
-            text = fenced_code.group(1).strip()
-
-    start = text.find('{')
-    if start == -1:
-        return text
-    brace_count = 0
-    for i, ch in enumerate(text[start:], start=start):
-        if ch == '{':
-            brace_count += 1
-        elif ch == '}':
-            brace_count -= 1
-            if brace_count == 0:
-                return text[start:i+1]
-    return text[start:]
         
 def get_scouting_report_with_retry(player_name, class_year, high_school, ranking_info, retries=3):
     ranking_info_json = json.dumps(ranking_info, indent=2)
@@ -159,19 +76,7 @@ def get_scouting_report_with_retry(player_name, class_year, high_school, ranking
             else:
                 raise
 
-def insert_report(player_uid, stars, rating, strengths, weaknesses, ai_analysis):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    strengths_json = json.dumps(strengths)
-    weaknesses_json = json.dumps(weaknesses)
-    cursor.execute(insert_sql, (player_uid, stars, rating, strengths_json, weaknesses_json, ai_analysis))
-    conn.commit()
-    cursor.close()
-    conn.close()
-
 def ai_report_exists(player_uid, class_year):
-    # fix Jacob Wilkins later because why
-    
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT 1 FROM ai_generated_high_school_evaluations WHERE player_uid = %s LIMIT 1", (player_uid,))
@@ -212,7 +117,8 @@ def safe_process_player(player):
             rating=parsed.get('rating', None),
             strengths=parsed.get('strengths', []),
             weaknesses=parsed.get('weaknesses', []),
-            ai_analysis=parsed.get('aiAnalysis', '')
+            ai_analysis=parsed.get('aiAnalysis', ''),
+            insert_sql=insert_sql
         )
         print(f"Inserted report for {player_name}")
         return player_name, True
@@ -221,7 +127,7 @@ def safe_process_player(player):
         return player_name, False
 
 def main():
-    players = fetch_players()
+    players = fetch_players(select_sql)
     print(f"Fetched {len(players)} players from DB")
 
     MAX_WORKERS = 5

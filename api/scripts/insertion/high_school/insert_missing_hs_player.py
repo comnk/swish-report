@@ -1,6 +1,7 @@
 from api.core.db import get_db_connection
 from api.scripts.scraping.fetch_individual_hs_player import fetch_247_data, fetch_espn_data, fetch_rivals_data
-from api.scripts.insertion.ai_generation.insert_ai_generated_hs_reports import ai_report_exists, parse_json_report, fetch_player_rankings, insert_report
+from ....utils.ai_generation_helpers import hs_ai_report_exists, parse_json_report, insert_report
+from ..ai_generation.insert_ai_generated_hs_reports import fetch_player_rankings
 
 from api.core.config import set_openai
 from api.utils.ai_prompts import SYSTEM_PROMPT, user_content
@@ -83,7 +84,7 @@ async def create_hs_player_analysis(player_uid):
     class_year = player[2]
     high_school = player[3]
     
-    if (ai_report_exists(player_uid, class_year)):
+    if (hs_ai_report_exists(player_uid, class_year)):
         return {"status": "fail", "player": player_name, "player_uid": player_uid}
     
     ranking_info = fetch_player_rankings(player_name)

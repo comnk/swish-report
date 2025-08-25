@@ -30,8 +30,6 @@ export default async function PlayerPage({ params }: PlayerPageProps) {
 
     const player: NBAPlayer = await res.json();
 
-    console.log(player);
-
     // Fetch videos
     const videoRes = await fetch(`http://localhost:8000/nba/players/${id}/videos`, {
         cache: "no-store",
@@ -152,29 +150,23 @@ export default async function PlayerPage({ params }: PlayerPageProps) {
                         </div>
                     </div>
 
-                    {/* Draft Info */}
-                    {(player.draft_round || player.draft_pick || player.draft_year) && (
+                    {/* Highlight Videos */}
+                    {videos.length > 0 && (
                         <div className="bg-white rounded-lg shadow-sm p-6">
-                            <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">Draft Info</h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-2xl font-bold text-gray-900">
-                                        {player.draft_round ?? "-"}
+                            <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">Highlight Videos</h2>
+                            <div className="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0">
+                                {videos.map((url, idx) => (
+                                    <div key={idx} className="flex-1 aspect-video">
+                                        <iframe
+                                            src={url.replace("watch?v=", "embed/")}
+                                            title={`Highlight Video ${idx + 1}`}
+                                            className="w-full h-full rounded-lg"
+                                            frameBorder="0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                        ></iframe>
                                     </div>
-                                    <div className="text-gray-700">Draft Round</div>
-                                </div>
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-2xl font-bold text-gray-900">
-                                        {player.draft_pick ?? "-"}
-                                    </div>
-                                    <div className="text-gray-700">Draft Pick</div>
-                                </div>
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-2xl font-bold text-gray-900">
-                                        {player.draft_year ?? "-"}
-                                    </div>
-                                    <div className="text-gray-700">Draft Year</div>
-                                </div>
+                                ))}
                             </div>
                         </div>
                     )}
@@ -256,36 +248,52 @@ export default async function PlayerPage({ params }: PlayerPageProps) {
                     </div>
 
                     {/* AI Scouting Report */}
-                    {/* <div className="bg-white rounded-lg shadow-sm p-6">
+                    <div className="bg-white rounded-lg shadow-sm p-6">
                         <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">AI Scouting Report</h2>
                         <div className="prose max-w-none">
                             {player.aiAnalysis.split("\n").map((para, i) => (
                                 <p key={i} className="text-gray-700 leading-relaxed mb-4">{para}</p>
                             ))}
                         </div>
-                    </div> */}
+                    </div>
 
-                    {/* Highlight Videos */}
-                    {videos.length > 0 && (
-                        <div className="bg-white rounded-lg shadow-sm p-6">
-                            <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">Highlight Videos</h2>
-                            <div className="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0">
-                                {videos.map((url, idx) => (
-                                    <div key={idx} className="flex-1 aspect-video">
-                                        <iframe
-                                            src={url.replace("watch?v=", "embed/")}
-                                            title={`Highlight Video ${idx + 1}`}
-                                            className="w-full h-full rounded-lg"
-                                            frameBorder="0"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                            allowFullScreen
-                                        ></iframe>
-                                    </div>
-                                ))}
+                    {/* Draft Info */}
+                {(player.draft_round || player.draft_pick || player.draft_year) && (
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">Draft Info</h2>
+                    <div
+                    className={`grid gap-6 text-center ${
+                        !player.draft_round && !player.draft_pick ? "grid-cols-2" : "grid-cols-3 sm:grid-cols-3"
+                    }`}
+                    >
+                    {player.draft_round || player.draft_pick ? (
+                        <>
+                        <div className="bg-gray-50 rounded-lg p-4">
+                            <div className="text-2xl font-bold text-gray-900">
+                            {player.draft_round ?? "Undrafted"}
                             </div>
+                            <div className="text-gray-700">Draft Round</div>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-4">
+                            <div className="text-2xl font-bold text-gray-900">
+                            {player.draft_pick ?? "Undrafted"}
+                            </div>
+                            <div className="text-gray-700">Draft Pick</div>
+                        </div>
+                        </>
+                    ) : (
+                        <div className="bg-gray-50 rounded-lg p-4 col-span-1">
+                        <div className="text-2xl font-bold text-gray-900">Undrafted</div>
+                        <div className="text-gray-700">Draft Status</div>
                         </div>
                     )}
-
+                    <div className="bg-gray-50 rounded-lg p-4">
+                        <div className="text-2xl font-bold text-gray-900">{player.draft_year ?? "-"}</div>
+                        <div className="text-gray-700">Draft Year</div>
+                    </div>
+                    </div>
+                </div>
+                )}
                 </div>
             </div>
         </div>

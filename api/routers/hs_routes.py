@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from ..core.db import get_db_connection
 from ..utils.hs_helpers import get_youtube_videos
-from ..scripts.insertion.insert_missing_hs_player import insert_hs_player, create_hs_player_analysis
+from ..scripts.insertion.high_school.insert_missing_hs_player import insert_hs_player, create_hs_player_analysis
 from typing import List, Dict, Optional
 import json
 

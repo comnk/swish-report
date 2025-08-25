@@ -29,26 +29,9 @@ export default function NBAPage() {
         if (!res.ok) throw new Error(`Error fetching NBA players: ${res.status}`);
         
         // Expecting backend to return all the DB fields you listed
-        const data: {
-          player_uid: number;
-          full_name: string;
-          position: string;
-          height: string;
-          weight: string;
-          yearMin: number;
-          yearMax: number;
-          team_names: string[];
-          draft_round: number | null;
-          draft_pick: number | null;
-          draft_year: number | null;
-          years_pro: number;
-          colleges: string[];
-          high_schools: string[];
-          is_active: boolean;
-          accolades: string[];
-        }[] = await res.json();
+        const data = await res.json();
 
-        const mappedPlayers: NBAPlayer[] = data.map((p) => ({
+        const mappedPlayers: NBAPlayer[] = data.map((p: any) => ({
           id: String(p.player_uid),
           full_name: p.full_name,
           position: p.position,
@@ -72,11 +55,11 @@ export default function NBAPage() {
             per: 0,
             winShares: 0,
           },
-          strengths: ["athleticism", "defense"], // placeholder until you add evals
-          weaknesses: ["turnovers"], // placeholder
-          aiAnalysis: `AI scouting report for ${p.full_name}.`,
-          overallRating: 85, // could be computed later from stats/AI
-          stars: 4,
+          strengths: p.strengths ?? ["athleticism", "defense"],
+          weaknesses: p.weaknesses ?? ["turnovers"],
+          aiAnalysis: p.aiAnalysis ?? `AI scouting report for ${p.full_name}.`,
+          overallRating: p.overallRating ?? 85,
+          stars: p.stars ?? 4,
         }));
 
         setPlayers(shuffleArray(mappedPlayers));

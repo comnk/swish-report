@@ -29,9 +29,15 @@ def get_nba_prospects():
             nba.colleges,
             nba.high_schools,
             nba.is_active,
-            nba.accolades
+            nba.accolades,
+            COALESCE(ai.stars, 4) AS stars,
+            COALESCE(ai.rating, 85) AS overallRating,
+            COALESCE(ai.strengths, JSON_ARRAY('Scoring', 'Athleticism', 'Court Vision')) AS strengths,
+            COALESCE(ai.weaknesses, JSON_ARRAY('Defense', 'Consistency')) AS weaknesses,
+            COALESCE(ai.ai_analysis, 'A highly talented high school prospect with excellent scoring ability and strong athletic traits.') AS aiAnalysis
         FROM players AS p
         INNER JOIN nba_player_info AS nba ON p.player_uid = nba.player_uid
+        LEFT JOIN ai_generated_nba_evaluations AS ai ON ai.player_uid = p.player_uid
         WHERE p.current_level = 'NBA';
     """)
 
@@ -39,7 +45,6 @@ def get_nba_prospects():
     cursor.close()
     cnx.close()
 
-    # Map SQL result to frontend expected keys
     result = []
     for p in players:
         result.append({
@@ -57,6 +62,11 @@ def get_nba_prospects():
             "high_schools": parse_json_list(p[11]),
             "is_active": bool(p[12]),
             "accolades": parse_json_list(p[13]),
+            "stars": p[14],
+            "overallRating": p[15],
+            "strengths": parse_json_list(p[16]),
+            "weaknesses": parse_json_list(p[17]),
+            "aiAnalysis": p[18],
         })
 
     return result
@@ -81,9 +91,15 @@ def get_nba_player(player_id: int):
                 nba.colleges,
                 nba.high_schools,
                 nba.is_active,
-                nba.accolades
+                nba.accolades,
+                COALESCE(ai.stars, 4) AS stars,
+                COALESCE(ai.rating, 85) AS overallRating,
+                COALESCE(ai.strengths, JSON_ARRAY('Scoring', 'Athleticism', 'Court Vision')) AS strengths,
+                COALESCE(ai.weaknesses, JSON_ARRAY('Defense', 'Consistency')) AS weaknesses,
+                COALESCE(ai.ai_analysis, 'A highly talented high school prospect with excellent scoring ability and strong athletic traits.') AS aiAnalysis
             FROM players AS p
             INNER JOIN nba_player_info AS nba ON p.player_uid = nba.player_uid
+            LEFT JOIN ai_generated_nba_evaluations AS ai ON ai.player_uid = p.player_uid
             WHERE p.current_level = 'NBA' AND p.player_uid=%s;
         """, (player_id,))
         row = cursor.fetchone()
