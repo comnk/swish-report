@@ -18,6 +18,7 @@ Rules:
     - 3 stars = rating 70-80
     - 2 stars = rating from 60-70
     - 0 stars = rating under 60
+- Do not consider age as a limitation
 - Remove any URLs, markdown links, or parenthetical references from your analysis.
 - Ensure all double quotes inside strings are escaped (for example, 6'4\" instead of 6'4").
 - Output must be valid JSON — do not include raw double quotes inside strings.

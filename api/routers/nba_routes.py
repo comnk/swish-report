@@ -138,7 +138,7 @@ def get_nba_player(player_id: int):
 @router.get("/players/{player_id}/videos")
 def get_nba_player_videos(player_id: int):
     select_sql = """
-    SELECT full_name
+    SELECT full_name, draft_year
     FROM players
     WHERE player_uid = %s
     """
@@ -152,7 +152,10 @@ def get_nba_player_videos(player_id: int):
         if not row:
             raise HTTPException(status_code=404, detail="Player not found")
 
-        youtube_videos = get_nba_youtube_videos(row["full_name"])
+        youtube_videos = get_nba_youtube_videos(
+            full_name=row["full_name"],
+            start_year=row["draft_year"]
+        )
         return youtube_videos
 
     except Exception as e:

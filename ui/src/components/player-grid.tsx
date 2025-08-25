@@ -20,9 +20,9 @@ function shuffleArray<T>(array: T[]): T[] {
 
 export default function PlayerGrid({ players, level }: PlayerGridProps) {
     const getRatingColor = (rating: number) => {
-        if (rating >= 93) return "text-green-600 bg-green-100";
-        if (rating >= 90) return "text-blue-600 bg-blue-100";
-        if (rating >= 80) return "text-orange-600 bg-orange-100";
+        if (rating >= 90) return "text-green-600 bg-green-100";
+        if (rating >= 80) return "text-blue-600 bg-blue-100";
+        if (rating >= 70) return "text-orange-600 bg-orange-100";
         return "text-slate-600 bg-slate-100";
     };
 

@@ -1,4 +1,3 @@
-import json
 import time
 import concurrent.futures
 
@@ -10,6 +9,10 @@ client = set_gemini_key()
 
 select_sql = """
 SELECT * FROM players INNER JOIN nba_player_info AS nba ON players.player_uid=nba.player_uid WHERE current_level="NBA" AND is_active=1
+"""
+
+select_sql_per_player = """
+SELECT full_name FROM players INNER JOIN nba_player_info AS nba ON players.player_uid=nba.player_uid WHERE current_level="NBA" AND is_active=1
 """
 
 insert_sql = """

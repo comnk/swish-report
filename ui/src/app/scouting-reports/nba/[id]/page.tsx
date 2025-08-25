@@ -40,6 +40,8 @@ export default async function PlayerPage({ params }: PlayerPageProps) {
         videos = await videoRes.json(); // assuming it's an array of YouTube URLs
     }
 
+    console.log(videos);
+
     const getGradeColor = (rating: number) => {
         if (rating >= 93) return "text-green-600 bg-green-50"; // A+
         if (rating >= 90) return "text-green-500 bg-green-50"; // A-
@@ -52,70 +54,71 @@ export default async function PlayerPage({ params }: PlayerPageProps) {
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
             <div className="bg-white border-b">
-                <Navigation />
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                        <div className="flex items-center space-x-6">
-                            <div className="w-24 h-24 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                                {player?.full_name
-                                    ? player.full_name
-                                        .split(" ")
-                                        .map((n) => n[0])
-                                        .join("")
-                                    : "?"}
-                            </div>
-                            <div>
-                                <h1 className="text-3xl font-bold text-gray-900">{player.full_name}</h1>
-                                <div className="flex flex-wrap items-center mt-2 space-x-2">
-                                    {/* Teams */}
-                                    {player.team_names && player.team_names.length > 0 ? (
-                                        player.team_names.map((team, idx) => (
-                                            <span
-                                                key={idx}
-                                                className="bg-gray-200 text-gray-900 font-medium text-sm px-3 py-1 rounded-full"
-                                            >
-                                                {team}
-                                            </span>
-                                        ))
-                                    ) : (
-                                        <span className="text-gray-900 font-medium text-sm">No Team</span>
-                                    )}
+            <Navigation />
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
+                {/* Left: Avatar + Name + Teams/Draft */}
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6 w-full lg:w-auto">
+                    {/* Avatar */}
+                    <div className="flex-shrink-0 w-24 h-24 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                    {player?.full_name
+                        ? player.full_name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                        : "?"}
+                    </div>
 
-                                    {/* Draft Year */}
-                                    {player.draft_year && (
-                                        <span className="flex items-center bg-gray-100 text-gray-900 font-medium text-sm px-3 py-1 rounded-full ml-2">
-                                            <Calendar className="w-4 h-4 mr-1" />
-                                            Draft {player.draft_year}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-4 lg:mt-0 flex items-center space-x-4">
-                            <div
-                                className={`px-4 py-2 rounded-full text-sm font-semibold ${getGradeColor(
-                                    player.overallRating
-                                )}`}
+                    {/* Name + Teams */}
+                    <div className="flex-1 min-w-0">
+                    <h1 className="text-3xl font-bold text-gray-900 truncate">{player.full_name}</h1>
+                    <div className="flex flex-wrap mt-2 gap-2">
+                        {/* Teams */}
+                        {player.team_names && player.team_names.length > 0 ? (
+                        player.team_names.map((team, idx) => (
+                            <span
+                            key={idx}
+                            className="bg-gray-200 text-gray-900 font-medium text-sm px-3 py-1 rounded-full"
                             >
-                                Overall Rating: {player.overallRating}
-                            </div>
-                            <div className="flex items-center">
-                                {[...Array(5)].map((_, i) => (
-                                    <Star
-                                        key={i}
-                                        className={`w-5 h-5 ${
-                                            i < player.stars ? "text-yellow-400 fill-current" : "text-gray-300"
-                                        }`}
-                                    />
-                                ))}
-                            </div>
-                        </div>
+                            {team}
+                            </span>
+                        ))
+                        ) : (
+                        <span className="text-gray-900 font-medium text-sm">No Team</span>
+                        )}
+
+                        {/* Draft Year */}
+                        {player.draft_year && (
+                        <span className="flex items-center bg-gray-100 text-gray-900 font-medium text-sm px-3 py-1 rounded-full">
+                            <Calendar className="w-4 h-4 mr-1" />
+                            Draft {player.draft_year}
+                        </span>
+                        )}
+                    </div>
+                    </div>
+                </div>
+
+                {/* Right: Rating + Stars */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
+                    <div
+                        className={`inline-block px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap ${getGradeColor(
+                        player.overallRating
+                        )}`}
+                    >
+                        Overall Rating: {player.overallRating}
+                    </div>
+                    <div className="flex items-center space-x-1">
+                        {[...Array(5)].map((_, i) => (
+                        <Star
+                            key={i}
+                            className={`w-5 h-5 ${i < player.stars ? "text-yellow-400 fill-current" : "text-gray-300"}`}
+                        />
+                        ))}
+                    </div>
                     </div>
                 </div>
             </div>
-
-
+            </div>
 
             {/* Main Content */}
             <div className="flex justify-center py-8 px-4 sm:px-6 lg:px-8">
