@@ -29,3 +29,18 @@ CREATE TABLE IF NOT EXISTS player_level_history (
     FOREIGN KEY (player_uid) REFERENCES players(player_uid)
 );
 """)
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS player_images (
+    image_id INT AUTO_INCREMENT PRIMARY KEY,
+    player_uid INT NOT NULL,
+    level ENUM('high_school_247', 'high_school_rivals', 'college', 'nba', 'gleague', 'international') NOT NULL,
+    image_url TEXT NOT NULL,
+    is_primary BOOLEAN DEFAULT TRUE,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (player_uid)
+        REFERENCES players (player_uid)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+""")

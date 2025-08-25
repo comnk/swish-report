@@ -21,9 +21,11 @@ export interface NBAPlayer {
     height: string;
     weight: string;
     college?: string;
-    team_names?: string[];
+    team_names: string[];
     years_pro?: string;
     draft_year?: number,
+    draft_round?: number,
+    draft_pick?: number,
     stars: number,
     overallRating: number;
     stats?: {

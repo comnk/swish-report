@@ -59,7 +59,7 @@ export default function PlayerGrid({ players, level }: PlayerGridProps) {
                         {player.position} | {player.height} |{" "}
                         {level === "high-school"
                         ? (player as HighSchoolPlayer).school ?? "-"
-                        : (player as NBAPlayer).team_names?.slice(-1)[0] ?? "-"}
+                        : (player as NBAPlayer).team_names.slice(-1)[0] ?? "-"}
                     </p>
                     <div className="flex items-center mt-1">
                         {Array.from({ length: stars }).map((_, i) => (

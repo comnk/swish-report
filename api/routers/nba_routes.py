@@ -107,6 +107,7 @@ def get_nba_player(player_id: int):
 
         # Rename player_uid to id
         row["id"] = row.pop("player_uid")
+        row["team_names"] = parse_json_list(row.pop("teams"))
         
         return row
 
