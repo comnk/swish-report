@@ -16,7 +16,7 @@ export default function Navigation() {
 
     const gameItems = [
         { name: "Lineup Builder", href: "/games/lineup-builder" },
-        { name: "Prediction Challenges", href: "/games/prediction-challenges" },
+        { name: "Poeltl", href: "/games/poeltl" },
     ];
 
     const submitItems = [

@@ -15,6 +15,7 @@ def get_nba_youtube_videos(
     Fetch NBA YouTube videos for a given player.
     Filters by fuzzy match on player name, upload date, and optionally channel.
     Returns at most max_videos with randomness.
+    If YouTube API fails, returns [] gracefully.
     """
     youtube = set_youtube_key()
 
@@ -30,10 +31,15 @@ def get_nba_youtube_videos(
     if start_year:
         params["publishedAfter"] = f"{start_year}-01-01T00:00:00Z"
 
-    request = youtube.search().list(**params)
-    response = request.execute()
-    videos_with_score = []
+    try:
+        request = youtube.search().list(**params)
+        response = request.execute()
+    except Exception as e:
+        # Gracefully handle API errors
+        print(f"YouTube API error for {full_name}: {e}")
+        return []
 
+    videos_with_score = []
     trusted_channels = [c.lower() for c in trusted_channels] if trusted_channels else []
 
     for item in response.get("items", []):
@@ -73,5 +79,6 @@ def get_nba_youtube_videos(
                 break
         if len(selected_videos) >= max_videos:
             break
-    print(selected_videos)
+
+    print(f"Selected videos for {full_name}: {selected_videos}")
     return selected_videos

@@ -237,11 +237,11 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=3, letter
                 # --- 🚨 filter
                 yearMax = player_tuple[3] or 0
                 accolades = player_tuple[12] or []
-                if yearMax <= 2004 and not accolades:
+                if yearMax <= 2006 and not accolades:
                     continue
                 years_pro = player_tuple[11] or 0
                 is_active = player_tuple[15] or 0
-                if years_pro <= 1 and not is_active:
+                if years_pro <= 2 and not is_active:
                     continue
 
                 player_hash = compute_player_hash(player_tuple)

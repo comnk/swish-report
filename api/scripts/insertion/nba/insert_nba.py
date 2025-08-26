@@ -1,4 +1,5 @@
 from datetime import datetime
+from unidecode import unidecode
 import hashlib
 import json
 import asyncio
@@ -7,6 +8,9 @@ from api.core.db import get_db_connection
 from api.scripts.scraping.fetch_nba_player_info import fetch_nba_players
 from api.utils.helpers import launch_browser
 
+def normalize_name(name):
+    """Remove accents and special characters, lowercase, strip spaces."""
+    return unidecode(name).strip()
 
 def compute_player_hash(player_tuple):
     """Compute a hash of player info ignoring URL and is_active."""
@@ -22,7 +26,7 @@ async def insert_nba_players(cursor, player_list):
     player_uid_map = {}
 
     for player in player_list:
-        full_name = player[0].strip()
+        full_name = normalize_name(player[0])
         draft_year = int(player[10] or 0)
 
         # Check for existing player
@@ -122,7 +126,7 @@ async def main():
     unique_players = {}
     for p in scraped_players:
         draft_year = p[10] or (p[3] if p[3] else 0)
-        key = (p[0], draft_year)
+        key = (normalize_name(p[0]), draft_year)
         if key not in unique_players:
             p = list(p)
             p[10] = draft_year

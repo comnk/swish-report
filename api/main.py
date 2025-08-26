@@ -15,3 +15,4 @@ app.add_middleware(
 app.include_router(nba_routes.router, prefix="/nba", tags=["NBA"])
 app.include_router(college_routes.router, prefix="/college", tags=["College"])
 app.include_router(hs_routes.router, prefix="/high-school", tags=["High School"])
+app.include_router(hs_routes.router, prefix="/games", tags=["Games"])
