@@ -138,24 +138,15 @@ def get_nba_player(player_id: int):
         if 'conn' in locals():
             conn.close()
 
+
 @router.get("/players/{player_id}/videos")
 def get_nba_player_videos(player_id: int, background_tasks: BackgroundTasks):
-    # SQL to get player info
-    select_sql = """
-    SELECT full_name, draft_year
-    FROM players
-    WHERE player_uid = %s
-    """
-    # SQL to get cached videos
-    select_cache_sql = """
-    SELECT videos_json, last_updated
-    FROM player_videos_cache
-    WHERE player_uid = %s
-    """
-    # SQL to insert/update cache
+    select_sql = "SELECT full_name, draft_year FROM players WHERE player_uid = %s"
+    select_cache_sql = "SELECT videos_json, last_updated FROM player_videos_cache WHERE player_uid = %s"
     upsert_cache_sql = """
-    REPLACE INTO player_videos_cache (player_uid, videos_json, last_updated)
-    VALUES (%s, %s, NOW())
+        INSERT INTO player_videos_cache (player_uid, videos_json)
+        VALUES (%s, %s)
+        ON DUPLICATE KEY UPDATE videos_json = VALUES(videos_json)
     """
 
     try:
@@ -174,7 +165,7 @@ def get_nba_player_videos(player_id: int, background_tasks: BackgroundTasks):
 
         if cached:
             last_updated = cached["last_updated"]
-            is_stale = (datetime.now() - last_updated) > timedelta(hours=CACHE_EXPIRY_HOURS)
+            is_stale = (datetime.utcnow() - last_updated) > timedelta(hours=CACHE_EXPIRY_HOURS)
 
             # If stale, refresh in background but return cached data immediately
             if is_stale:
@@ -182,7 +173,10 @@ def get_nba_player_videos(player_id: int, background_tasks: BackgroundTasks):
                     refresh_player_videos, player_id, row["full_name"], row["draft_year"]
                 )
 
-            return json.loads(cached["videos_json"])
+            videos = cached["videos_json"]
+            if isinstance(videos, str):
+                videos = json.loads(videos)
+            return videos
 
         # Step 3: No cache -> fetch now (blocking)
         youtube_videos = get_nba_youtube_videos(
@@ -205,17 +199,27 @@ def get_nba_player_videos(player_id: int, background_tasks: BackgroundTasks):
 
 def refresh_player_videos(player_id: int, full_name: str, draft_year: int):
     """Background task to refresh YouTube videos cache."""
+    upsert_cache_sql = """
+        INSERT INTO player_videos_cache (player_uid, videos_json)
+        VALUES (%s, %s)
+        ON DUPLICATE KEY UPDATE videos_json = VALUES(videos_json)
+    """
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
+        # Step 1: Fetch the latest YouTube videos
         youtube_videos = get_nba_youtube_videos(full_name=full_name, start_year=draft_year)
 
-        cursor.execute(
-            "REPLACE INTO player_videos_cache (player_uid, videos_json, last_updated) VALUES (%s, %s, NOW())",
-            (player_id, json.dumps(youtube_videos))
-        )
+        # Step 2: Save to cache safely
+        cursor.execute(upsert_cache_sql, (player_id, json.dumps(youtube_videos)))
         conn.commit()
+
+    except Exception as e:
+        # Optional: log error instead of silently failing
+        print(f"Error refreshing player {player_id} videos: {e}")
+
     finally:
         if 'cursor' in locals(): cursor.close()
         if 'conn' in locals(): conn.close()
