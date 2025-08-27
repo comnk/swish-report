@@ -3,9 +3,9 @@ import json
 from fastapi import APIRouter, HTTPException
 from typing import List
 
-from ..core.db import get_db_connection
-from ..utils.nba_helpers import get_nba_youtube_videos
-from ..utils.helpers import parse_json_list
+from core.db import get_db_connection
+from utils.nba_helpers import get_nba_youtube_videos
+from utils.helpers import parse_json_list
 
 router = APIRouter()
 

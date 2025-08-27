@@ -1,5 +1,5 @@
 from nba_api.stats.static import players
-from ..core.db import get_db_connection
+from core.db import get_db_connection
 from unidecode import unidecode
 from rapidfuzz import process, fuzz
 

@@ -2,7 +2,7 @@ import random
 from typing import List
 from rapidfuzz import fuzz
 
-from ..core.config import set_youtube_key
+from core.config import set_youtube_key
 
 def get_nba_youtube_videos(
     full_name: str,

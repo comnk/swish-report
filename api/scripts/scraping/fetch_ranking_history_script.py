@@ -1,5 +1,5 @@
 from playwright.sync_api import sync_playwright
-from api.core.db import get_db_connection
+from core.db import get_db_connection
 
 def fetch_players_247_ranking_history(class_year):
     class_year_history = []

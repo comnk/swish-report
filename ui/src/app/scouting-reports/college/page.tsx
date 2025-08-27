@@ -1,13 +1,10 @@
 import Navigation from "@/components/navigation";
-import PlayerSearch from "@/components/player-search";
-import PlayerGrid from "@/components/player-grid";
-import { mockCollegePlayers } from "@/data/mock-players";
 
 export default function CollegePage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-green-50">
       <Navigation />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="text-center mb-12">
@@ -15,8 +12,9 @@ export default function CollegePage() {
             College <span className="gradient-text">Basketball</span>
           </h1>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-            Comprehensive analysis of college basketball players with draft projections, 
-            performance metrics, and professional potential assessments.
+            Comprehensive analysis of college basketball players with draft
+            projections, performance metrics, and professional potential
+            assessments.
           </p>
         </div>
 
@@ -41,7 +39,7 @@ export default function CollegePage() {
         </div>
 
         {/* Player Grid */}
-        <PlayerGrid players={mockCollegePlayers} level="college" />
+        {/* <PlayerGrid players={mockCollegePlayers} level="college" /> */}
       </div>
     </main>
   );

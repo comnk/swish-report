@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Tuple, Optional, List
 from rapidfuzz import fuzz
 
-from ..core.config import set_youtube_key
+from core.config import set_youtube_key
 
 def get_youtube_videos(full_name: str, class_year: str, threshold: int = 85, max_videos: int = 3) -> List[str]:
     """

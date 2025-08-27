@@ -20,47 +20,62 @@ export default function NBAPage() {
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(12);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
+  const [selectedFilters, setSelectedFilters] = useState<
+    Record<string, string>
+  >({});
 
   useEffect(() => {
     async function fetchNBAPlayers() {
       try {
         const res = await fetch("http://localhost:8000/nba/players");
-        if (!res.ok) throw new Error(`Error fetching NBA players: ${res.status}`);
-        
-        // Expecting backend to return all the DB fields you listed
+        if (!res.ok)
+          throw new Error(`Error fetching NBA players: ${res.status}`);
+
+        // Expecting localhost to return all the DB fields you listed
         const data = await res.json();
 
-        const mappedPlayers: NBAPlayer[] = data.map((p: any) => ({
-          id: String(p.player_uid),
-          full_name: p.full_name,
-          position: p.position,
-          height: p.height,
-          weight: p.weight,
-          team_names: p.team_names,
-          school: (p.colleges?.length ? p.colleges.join(", ") : (p.high_schools || []).join(", ")),
-          experience: p.years_pro > 0 ? `${p.years_pro} years pro` : "Rookie",
-          draftInfo: p.draft_year
-            ? `Draft ${p.draft_year} • R${p.draft_round} P${p.draft_pick}`
-            : "Undrafted",
-          isActive: p.is_active,
-          accolades: p.accolades,
-          stats: {
-            // These are placeholders unless you join game stats table later
-            points: 0,
-            rebounds: 0,
-            assists: 0,
-            fieldGoalPercentage: 0,
-            threePointPercentage: 0,
-            per: 0,
-            winShares: 0,
-          },
-          strengths: p.strengths ?? ["athleticism", "defense"],
-          weaknesses: p.weaknesses ?? ["turnovers"],
-          aiAnalysis: p.aiAnalysis ?? `AI scouting report for ${p.full_name}.`,
-          overallRating: p.overallRating ?? 85,
-          stars: p.stars ?? 4,
-        }));
+        const mappedPlayers: NBAPlayer[] = data.map(
+          (p: Record<string, unknown>) => {
+            const player = p as unknown as Record<string, unknown>; // Treat as generic object temporarily
+            return {
+              id: String(player["player_uid"] ?? ""), // fallback if missing
+              full_name: String(player["full_name"] ?? ""),
+              position: String(player["position"] ?? ""),
+              height: String(player["height"] ?? ""),
+              weight: String(player["weight"] ?? ""),
+              team_names: (player["team_names"] as string[]) ?? [],
+              college: player["colleges"]
+                ? (player["colleges"] as string[]).join(", ")
+                : undefined,
+              years_pro: player["years_pro"]
+                ? `${player["years_pro"]}`
+                : "Rookie",
+              draft_year: player["draft_year"] as number | undefined,
+              draft_round: player["draft_round"] as number | undefined,
+              draft_pick: player["draft_pick"] as number | undefined,
+              stars: (player["stars"] as number) ?? 4,
+              overallRating: (player["overallRating"] as number) ?? 85,
+              strengths: (player["strengths"] as string[]) ?? [
+                "athleticism",
+                "defense",
+              ],
+              weaknesses: (player["weaknesses"] as string[]) ?? ["turnovers"],
+              aiAnalysis: String(
+                player["aiAnalysis"] ??
+                  `AI scouting report for ${player["full_name"] ?? ""}.`
+              ),
+              stats: (player["stats"] as NBAPlayer["stats"]) ?? {
+                points: 0,
+                rebounds: 0,
+                assists: 0,
+                fieldGoalPercentage: 0,
+                threePointPercentage: 0,
+                per: 0,
+                winShares: 0,
+              },
+            } as NBAPlayer;
+          }
+        );
 
         setPlayers(shuffleArray(mappedPlayers));
       } catch (error) {
@@ -73,28 +88,41 @@ export default function NBAPage() {
     fetchNBAPlayers();
   }, []);
 
-
   // Filtering logic based on searchTerm and selectedFilters
   const filteredPlayers = players.filter((player) => {
-    // Search filter: name includes search term (case-insensitive)
     const matchesSearch =
       searchTerm === "" ||
       player.full_name.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Filters: match all selected filters (if any)
-    const matchesFilters = Object.entries(selectedFilters).every(([key, value]) => {
-      if (!value) return true; // empty filter means ignore
+    const matchesFilters = (
+      Object.entries(selectedFilters) as [keyof NBAPlayer, string][]
+    ).every(([key, value]) => {
+      if (!value) return true;
 
-      // For stars filter which is numeric but stored as string in filters (e.g. "5")
+      // For stars filter which is numeric but stored as string
       if (key === "stars") {
         return player.stars.toString() === value;
       }
 
-      // For other keys, just compare lowercase strings
-      const playerValue = (player as any)[key];
-      if (!playerValue) return false;
+      const playerValue = player[key];
 
-      return playerValue.toString().toLowerCase() === value.toLowerCase();
+      if (playerValue === undefined || playerValue === null) return false;
+
+      // If it's a primitive, compare as string
+      if (typeof playerValue === "string" || typeof playerValue === "number") {
+        return playerValue.toString().toLowerCase() === value.toLowerCase();
+      }
+
+      // If it's an array (like team_names), check inclusion
+      if (Array.isArray(playerValue)) {
+        return playerValue
+          .map(String)
+          .map((v) => v.toLowerCase())
+          .includes(value.toLowerCase());
+      }
+
+      // Otherwise, cannot compare
+      return false;
     });
 
     return matchesSearch && matchesFilters;
@@ -130,7 +158,10 @@ export default function NBAPage() {
           <p className="text-center">Loading...</p>
         ) : (
           <>
-            <PlayerGrid players={filteredPlayers.slice(0, visibleCount)} level="nba" />
+            <PlayerGrid
+              players={filteredPlayers.slice(0, visibleCount)}
+              level="nba"
+            />
 
             {/* Show More Button */}
             {visibleCount < filteredPlayers.length && (

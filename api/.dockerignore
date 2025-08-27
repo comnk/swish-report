@@ -1,0 +1,9 @@
+**pycache**
+_.pyc
+_.pyo
+_.pyd
+_.db
+.venv
+.env
+Dockerfile
+.dockerignore

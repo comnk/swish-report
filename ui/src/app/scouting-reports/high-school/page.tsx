@@ -22,7 +22,9 @@ export default function HighSchoolPage() {
   const [visibleCount, setVisibleCount] = useState(12);
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
+  const [selectedFilters, setSelectedFilters] = useState<
+    Record<string, string>
+  >({});
 
   useEffect(() => {
     const fetchPlayers = async () => {
@@ -32,23 +34,34 @@ export default function HighSchoolPage() {
 
         const data = await res.json();
 
-        const mapped: HighSchoolPlayer[] = data.map((p: any) => ({
-          id: String(p.id),
-          full_name: p.full_name,
-          position: p.position,
-          school: p.school_name,
-          class: p.class_year?.toString() ?? "",
-          height: p.height,
-          stars: p.stars ?? 4,
-          overallRating: p.overallRating ?? 85,
-          strengths: p.strengths ?? ["Scoring", "Athleticism", "Court Vision"],
-          weaknesses: p.weaknesses ?? ["Defense", "Consistency"],
-          aiAnalysis:
-            p.aiAnalysis ??
-            "A highly talented high school prospect with excellent scoring ability and strong athletic traits.",
-          draftProjection: "Projected late first-round pick",
-          weight: "",
-        }));
+        const mapped: HighSchoolPlayer[] = data.map(
+          (
+            p: Partial<HighSchoolPlayer> & {
+              school_name?: string;
+              class_year?: string | number;
+            }
+          ) => ({
+            id: String(p.id),
+            full_name: p.full_name,
+            position: p.position,
+            school: p.school_name,
+            class: p.class_year?.toString() ?? "",
+            height: p.height,
+            stars: p.stars ?? 4,
+            overallRating: p.overallRating ?? 85,
+            strengths: p.strengths ?? [
+              "Scoring",
+              "Athleticism",
+              "Court Vision",
+            ],
+            weaknesses: p.weaknesses ?? ["Defense", "Consistency"],
+            aiAnalysis:
+              p.aiAnalysis ??
+              "A highly talented high school prospect with excellent scoring ability and strong athletic traits.",
+            draftProjection: "Projected late first-round pick",
+            weight: "",
+          })
+        );
 
         setPlayers(shuffleArray(mapped));
       } catch (error) {
@@ -68,22 +81,24 @@ export default function HighSchoolPage() {
       player.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       player.school?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesFilters = Object.entries(selectedFilters).every(([key, value]) => {
-      if (!value) return true; // skip empty filters
+    const matchesFilters = (
+      Object.entries(selectedFilters) as [keyof HighSchoolPlayer, string][]
+    ).every(([key, value]) => {
+      if (!value) return true;
 
-      // Multi-select case (comma-separated string)
       if (value.includes(",")) {
-        const selectedValues = value.split(",").map(v => v.trim().toLowerCase());
-        return selectedValues.includes(String((player as any)[key]).toLowerCase());
+        const selectedValues = value
+          .split(",")
+          .map((v) => v.trim().toLowerCase());
+        return selectedValues.includes(String(player[key]).toLowerCase());
       }
 
-      // Single value case
-      return String((player as any)[key]).toLowerCase() === value.toLowerCase();
+      return String(player[key]).toLowerCase() === value.toLowerCase();
     });
 
     return matchesSearch && matchesFilters;
   });
-  
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <Navigation />
@@ -114,7 +129,10 @@ export default function HighSchoolPage() {
           <p className="text-center">Loading...</p>
         ) : (
           <>
-            <PlayerGrid players={filteredPlayers.slice(0, visibleCount)} level="high-school" />
+            <PlayerGrid
+              players={filteredPlayers.slice(0, visibleCount)}
+              level="high-school"
+            />
             {visibleCount < filteredPlayers.length && (
               <div className="text-center mt-8">
                 <button

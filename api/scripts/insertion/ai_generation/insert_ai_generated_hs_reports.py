@@ -4,10 +4,10 @@ import re
 import concurrent.futures
 
 from datetime import datetime
-from ....core.db import get_db_connection
-from ....core.config import set_openai
-from ....utils.ai_prompts import SYSTEM_PROMPT, user_content
-from ....utils.ai_generation_helpers import fetch_players, parse_json_report, insert_report
+from core.db import get_db_connection
+from core.config import set_openai
+from utils.ai_prompts import SYSTEM_PROMPT, user_content
+from utils.ai_generation_helpers import fetch_players, parse_json_report, insert_report
 
 client = set_openai()
 

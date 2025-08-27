@@ -1,9 +1,9 @@
 import time
 import concurrent.futures
 
-from api.core.config import set_gemini_key
-from ....utils.ai_prompts import SYSTEM_PROMPT, nba_player_content
-from ....utils.ai_generation_helpers import fetch_players, nba_ai_report_exists, parse_json_report, insert_report
+from core.config import set_gemini_key
+from utils.ai_prompts import SYSTEM_PROMPT, nba_player_content
+from utils.ai_generation_helpers import fetch_players, nba_ai_report_exists, parse_json_report, insert_report
 
 client = set_gemini_key()
 

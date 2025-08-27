@@ -1,5 +1,5 @@
-from api.utils.helpers import launch_browser
-from api.utils.hs_helpers import get_espn_star_count, is_rankings_finalized, parse_espn_bio, parse_city_state, normalize_position, parse_rivals_high_school
+from utils.helpers import launch_browser
+from utils.hs_helpers import get_espn_star_count, is_rankings_finalized, parse_espn_bio, parse_city_state, normalize_position, parse_rivals_high_school
 
 async def safe_int(value):
     """Convert a value to int, return None if invalid."""

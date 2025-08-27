@@ -1,10 +1,10 @@
-from api.core.db import get_db_connection
-from api.scripts.scraping.fetch_individual_hs_player import fetch_247_data, fetch_espn_data, fetch_rivals_data
-from ....utils.ai_generation_helpers import hs_ai_report_exists, parse_json_report, insert_report
-from ..ai_generation.insert_ai_generated_hs_reports import fetch_player_rankings
+from core.db import get_db_connection
+from scripts.scraping.fetch_individual_hs_player import fetch_247_data, fetch_espn_data, fetch_rivals_data
+from utils.ai_generation_helpers import hs_ai_report_exists, parse_json_report, insert_report
+from scripts.insertion.ai_generation.insert_ai_generated_hs_reports import fetch_player_rankings
 
-from api.core.config import set_openai
-from api.utils.ai_prompts import SYSTEM_PROMPT, user_content
+from core.config import set_openai
+from utils.ai_prompts import SYSTEM_PROMPT, user_content
 
 import asyncio
 import json

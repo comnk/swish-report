@@ -4,9 +4,9 @@ import hashlib
 import json
 import asyncio
 
-from api.core.db import get_db_connection
-from api.scripts.scraping.fetch_nba_player_info import fetch_nba_players
-from api.utils.helpers import launch_browser
+from core.db import get_db_connection
+from scripts.scraping.fetch_nba_player_info import fetch_nba_players
+from utils.helpers import launch_browser
 
 def normalize_name(name):
     """Remove accents and special characters, lowercase, strip spaces."""
@@ -59,6 +59,8 @@ async def insert_nba_player_details(cursor, player_list, player_uid_map, existin
         full_name, link, min_year, max_year, position, height, weight, teams, \
         draft_round, draft_pick, draft_year, years_pro, accolades, colleges, \
         high_schools, is_active = player
+
+        full_name = normalize_name(full_name)
 
         player_uid = player_uid_map[(full_name, draft_year)]
         data_hash = compute_player_hash(player)

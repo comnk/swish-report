@@ -1,4 +1,4 @@
-from api.core.db import get_db_connection
+from core.db import get_db_connection
 
 cnx = get_db_connection()
 cursor = cnx.cursor()
