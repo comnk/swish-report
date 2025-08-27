@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS player_videos_cache (
+    player_uid INT PRIMARY KEY,
+    videos_json JSON NOT NULL,
+    last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

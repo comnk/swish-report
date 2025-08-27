@@ -1,6 +1,7 @@
 import json
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
+from datetime import datetime, timedelta
 from typing import List
 
 from core.db import get_db_connection
@@ -8,6 +9,8 @@ from utils.nba_helpers import get_nba_youtube_videos
 from utils.helpers import parse_json_list
 
 router = APIRouter()
+
+CACHE_EXPIRY_HOURS = 6
 
 @router.get("/players", response_model=List[dict])
 def get_nba_prospects():
@@ -136,32 +139,83 @@ def get_nba_player(player_id: int):
             conn.close()
 
 @router.get("/players/{player_id}/videos")
-def get_nba_player_videos(player_id: int):
+def get_nba_player_videos(player_id: int, background_tasks: BackgroundTasks):
+    # SQL to get player info
     select_sql = """
     SELECT full_name, draft_year
     FROM players
     WHERE player_uid = %s
     """
+    # SQL to get cached videos
+    select_cache_sql = """
+    SELECT videos_json, last_updated
+    FROM player_videos_cache
+    WHERE player_uid = %s
+    """
+    # SQL to insert/update cache
+    upsert_cache_sql = """
+    REPLACE INTO player_videos_cache (player_uid, videos_json, last_updated)
+    VALUES (%s, %s, NOW())
+    """
 
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+
+        # Step 1: Get player info
         cursor.execute(select_sql, (player_id,))
         row = cursor.fetchone()
-
         if not row:
             raise HTTPException(status_code=404, detail="Player not found")
 
+        # Step 2: Check cache
+        cursor.execute(select_cache_sql, (player_id,))
+        cached = cursor.fetchone()
+
+        if cached:
+            last_updated = cached["last_updated"]
+            is_stale = (datetime.now() - last_updated) > timedelta(hours=CACHE_EXPIRY_HOURS)
+
+            # If stale, refresh in background but return cached data immediately
+            if is_stale:
+                background_tasks.add_task(
+                    refresh_player_videos, player_id, row["full_name"], row["draft_year"]
+                )
+
+            return json.loads(cached["videos_json"])
+
+        # Step 3: No cache -> fetch now (blocking)
         youtube_videos = get_nba_youtube_videos(
             full_name=row["full_name"],
             start_year=row["draft_year"]
         )
+
+        # Step 4: Save to cache
+        cursor.execute(upsert_cache_sql, (player_id, json.dumps(youtube_videos)))
+        conn.commit()
+
         return youtube_videos
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if 'cursor' in locals():
-            cursor.close()
-        if 'conn' in locals():
-            conn.close()
+        if 'cursor' in locals(): cursor.close()
+        if 'conn' in locals(): conn.close()
+
+
+def refresh_player_videos(player_id: int, full_name: str, draft_year: int):
+    """Background task to refresh YouTube videos cache."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        youtube_videos = get_nba_youtube_videos(full_name=full_name, start_year=draft_year)
+
+        cursor.execute(
+            "REPLACE INTO player_videos_cache (player_uid, videos_json, last_updated) VALUES (%s, %s, NOW())",
+            (player_id, json.dumps(youtube_videos))
+        )
+        conn.commit()
+    finally:
+        if 'cursor' in locals(): cursor.close()
+        if 'conn' in locals(): conn.close()
