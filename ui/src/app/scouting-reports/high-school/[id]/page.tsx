@@ -18,7 +18,7 @@ export default async function PlayerPage({ params }: { params: Params }) {
   const { id } = await params;
 
   // Fetch player info
-  const res = await fetch(`http://localhost:8000/high-school/prospects/${id}`, {
+  const res = await fetch(`http://backend:8000/high-school/prospects/${id}`, {
     cache: "no-store",
   });
   if (!res.ok) notFound();
@@ -26,7 +26,7 @@ export default async function PlayerPage({ params }: { params: Params }) {
 
   // Fetch videos
   const videoRes = await fetch(
-    `http://localhost:8000/high-school/prospects/${id}/videos`,
+    `http://backend:8000/high-school/prospects/${id}/videos`,
     { cache: "no-store" }
   );
   const videos: string[] = videoRes.ok ? await videoRes.json() : [];
