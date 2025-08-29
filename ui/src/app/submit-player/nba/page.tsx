@@ -1,9 +1,7 @@
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { ExternalLink, AlertCircle } from "lucide-react";
 import Navigation from "@/components/navigation";
+import { AlertCircle, ExternalLink } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function SubmitPlayerPage() {
   const router = useRouter();
@@ -59,10 +57,8 @@ export default function SubmitPlayerPage() {
       console.error(err);
 
       if (err instanceof Error) {
-        // TypeScript now knows err is Error
         setErrorMessage(err.message);
       } else {
-        // fallback for non-Error values (rare)
         setErrorMessage("An unknown error occurred");
       }
 
@@ -76,13 +72,12 @@ export default function SubmitPlayerPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <Navigation />
       <div className="bg-white border-b">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-gray-900">
-              Submit Missing High School Player
+              Submit Missing NBA Player
             </h1>
             <p className="mt-2 text-gray-600 max-w-2xl mx-auto">
               Help us expand our database by submitting information about high
@@ -132,85 +127,31 @@ export default function SubmitPlayerPage() {
                     required
                   />
                 </div>
-
-                <div>
-                  <label
-                    htmlFor="espnLink"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    ESPN Recruiting Link
-                  </label>
-                  <input
-                    type="url"
-                    id="espnLink"
-                    name="espnLink"
-                    value={formData.espnLink}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                    placeholder="https://www.espn.com/college-sports/basketball/recruiting/player/..."
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="sports247Link"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    247Sports Link
-                  </label>
-                  <input
-                    type="url"
-                    id="sports247Link"
-                    name="sports247Link"
-                    value={formData.sports247Link}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                    placeholder="https://247sports.com/player/..."
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="rivalsLink"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Rivals Link
-                  </label>
-                  <input
-                    type="url"
-                    id="rivalsLink"
-                    name="rivalsLink"
-                    value={formData.rivalsLink}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                    placeholder="https://rivals.com/content/prospects/..."
-                  />
-                </div>
               </div>
-            </div>
 
-            <div className="pt-4">
-              <button
-                type="submit"
-                disabled={!isFormValid || isSubmitting}
-                className="w-full bg-orange-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Submitting...
-                  </>
-                ) : (
-                  "Submit Player"
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  disabled={!isFormValid || isSubmitting}
+                  className="w-full bg-orange-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit Player"
+                  )}
+                </button>
+
+                {!isFormValid && (
+                  <p className="mt-2 text-sm text-gray-500 flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-1" />
+                    Please enter the player’s name
+                  </p>
                 )}
-              </button>
-
-              {!isFormValid && (
-                <p className="mt-2 text-sm text-gray-500 flex items-center">
-                  <AlertCircle className="w-4 h-4 mr-1" />
-                  Please enter the player’s name
-                </p>
-              )}
+              </div>
             </div>
           </form>
         </div>

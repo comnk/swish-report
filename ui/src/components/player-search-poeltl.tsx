@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
+import { NBAPlayer } from "@/types/player";
 
 interface PlayerSearchProps {
   level: "high-school" | "college" | "nba";
   searchTerm: string;
   setSearchTerm: (term: string) => void;
-  allPlayers: string[];
+  allPlayers: NBAPlayer[];
   onSelectPlayer?: (player: string) => void; // optional callback (for guesses)
 }
 
@@ -18,7 +19,7 @@ export default function PlayerSearchPoeltl({
   allPlayers,
   onSelectPlayer,
 }: PlayerSearchProps) {
-  const [filteredPlayers, setFilteredPlayers] = useState<string[]>([]);
+  const [filteredPlayers, setFilteredPlayers] = useState<NBAPlayer[]>([]);
   const [highlightIndex, setHighlightIndex] = useState(0);
 
   // Autocomplete filter logic
@@ -28,16 +29,18 @@ export default function PlayerSearchPoeltl({
       return;
     }
     const results = allPlayers
-      .filter((p) => p.toLowerCase().includes(searchTerm.toLowerCase()))
+      .filter((p) =>
+        p["full_name"].toLowerCase().includes(searchTerm.toLowerCase())
+      )
       .slice(0, 8);
     setFilteredPlayers(results);
     setHighlightIndex(0);
   }, [searchTerm, allPlayers]);
 
-  const handleSelectPlayer = (player: string) => {
-    setSearchTerm(player);
+  const handleSelectPlayer = (player: NBAPlayer) => {
+    setSearchTerm(player["full_name"]);
     setFilteredPlayers([]);
-    onSelectPlayer?.(player);
+    onSelectPlayer?.(player["full_name"]);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -81,7 +84,7 @@ export default function PlayerSearchPoeltl({
           >
             {filteredPlayers.map((player, idx) => (
               <li
-                key={player}
+                key={player["id"]}
                 className={`px-4 py-2 cursor-pointer transition-colors ${
                   idx === highlightIndex
                     ? "bg-orange-100 text-orange-900"
@@ -89,7 +92,7 @@ export default function PlayerSearchPoeltl({
                 }`}
                 onMouseDown={() => handleSelectPlayer(player)}
               >
-                {player}
+                {player["full_name"]}
               </li>
             ))}
           </ul>
