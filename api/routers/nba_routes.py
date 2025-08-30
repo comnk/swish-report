@@ -2,15 +2,21 @@ import json
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from datetime import datetime, timedelta
-from typing import List
+from pydantic import BaseModel
+from typing import List, Optional, Dict
 
 from core.db import get_db_connection
 from utils.nba_helpers import get_nba_youtube_videos
 from utils.helpers import parse_json_list
+from scripts.insertion.nba.insert_missing_nba_player import insert_nba_player, create_nba_player_analysis
 
 router = APIRouter()
 
 CACHE_EXPIRY_HOURS = 6
+
+class PlayerSubmission(BaseModel):
+    name: str
+    basketball_reference_link: Optional[str] = None
 
 @router.get("/players", response_model=List[dict])
 def get_nba_prospects():
@@ -223,3 +229,30 @@ def refresh_player_videos(player_id: int, full_name: str, draft_year: int):
     finally:
         if 'cursor' in locals(): cursor.close()
         if 'conn' in locals(): conn.close()
+
+@router.post("/players/submit-player", response_model=Dict)
+async def submit_high_school_player(submission: PlayerSubmission):
+    try:
+        player_info = await insert_nba_player(
+            submission.name,
+            submission.basketball_reference_link,
+        )
+        
+        analysis_info = await create_nba_player_analysis(player_info["player_uid"])
+        
+        if analysis_info.get("status") != "success":
+            return {
+                "status": "fail",
+                "message": f"Player analysis failed for {submission.name}.",
+                "player_uid": player_info["player_uid"]
+            }
+        
+        return {
+            "status": "success",
+            "message": f"{submission.name} submitted successfully.",
+            "player_uid": player_info["player_uid"]
+        }
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())  # log full error
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")

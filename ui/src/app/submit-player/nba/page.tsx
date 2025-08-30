@@ -1,3 +1,5 @@
+"use client";
+
 import Navigation from "@/components/navigation";
 import { AlertCircle, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -8,9 +10,7 @@ export default function SubmitPlayerPage() {
 
   const [formData, setFormData] = useState({
     name: "",
-    espnLink: "",
-    sports247Link: "",
-    rivalsLink: "",
+    basketballReferenceLink: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<
@@ -37,9 +37,7 @@ export default function SubmitPlayerPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: formData.name,
-            espn_link: formData.espnLink || null,
-            sports247_link: formData.sports247Link || null,
-            rivals_link: formData.rivalsLink || null,
+            basketball_reference_link: formData.basketballReferenceLink || null,
           }),
         }
       );
@@ -125,6 +123,24 @@ export default function SubmitPlayerPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-black transition-colors"
                     placeholder="Enter player's full name"
                     required
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="espnLink"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Basketball Reference Link
+                  </label>
+                  <input
+                    type="url"
+                    id="espnLink"
+                    name="espnLink"
+                    value={formData.basketballReferenceLink}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                    placeholder="https://www.basketball-reference.com/players/..."
                   />
                 </div>
               </div>

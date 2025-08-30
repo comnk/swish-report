@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from datetime import datetime, timedelta
 from pydantic import BaseModel
 from core.db import get_db_connection
 from utils.hs_helpers import get_youtube_videos
