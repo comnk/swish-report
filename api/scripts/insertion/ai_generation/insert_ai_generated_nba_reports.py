@@ -3,16 +3,16 @@ import concurrent.futures
 
 from core.config import set_gemini_key
 from utils.ai_prompts import SYSTEM_PROMPT, nba_player_content
-from utils.ai_generation_helpers import fetch_players, nba_ai_report_exists, parse_json_report, insert_report
+from utils.ai_generation_helpers import fetch_players, fetch_nba_player_info, nba_ai_report_exists, parse_json_report, insert_report
 
 client = set_gemini_key()
 
 select_sql = """
-SELECT * FROM players INNER JOIN nba_player_info AS nba ON players.player_uid=nba.player_uid WHERE current_level="NBA" AND is_active=1
+SELECT * FROM players INNER JOIN nba_player_info AS nba ON players.player_uid=nba.player_uid WHERE current_level="NBA";
 """
 
 select_sql_per_player = """
-SELECT full_name FROM players INNER JOIN nba_player_info AS nba ON players.player_uid=nba.player_uid WHERE current_level="NBA" AND is_active=1
+SELECT * FROM players INNER JOIN nba_player_info AS nba ON players.player_uid=nba.player_uid WHERE current_level="NBA" AND players.player_uid=%s
 """
 
 insert_sql = """
@@ -27,10 +27,12 @@ ON DUPLICATE KEY UPDATE
     ai_analysis = VALUES(ai_analysis);
 """
 
-def get_scouting_report_with_retry(player_name, retries=3):
+def get_scouting_report_with_retry(player_uid, player_name, retries=3):
+    player_info = fetch_nba_player_info(select_sql_per_player, player_uid)
+    
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": nba_player_content(player_name)}
+        {"role": "user", "content": nba_player_content(player_name, player_info)}
     ]
 
     for attempt in range(retries):
@@ -52,14 +54,15 @@ def get_scouting_report_with_retry(player_name, retries=3):
 def safe_process_player(player):
     player_uid = player['player_uid']
     player_name = player['full_name']
+    is_active = player['is_active']
 
     # Skip if AI report already exists for this player
-    if nba_ai_report_exists(player_uid):
+    if nba_ai_report_exists(player_uid, is_active):
         print(f"Skipping {player_name}, AI report already exists.")
         return player_name, True
 
     try:
-        raw = get_scouting_report_with_retry(player_name)
+        raw = get_scouting_report_with_retry(player_uid, player_name)
 
         parsed = parse_json_report(raw)
         if not parsed:

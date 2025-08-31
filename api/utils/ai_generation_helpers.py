@@ -13,6 +13,15 @@ def fetch_players(select_sql):
     conn.close()
     return rows
 
+def fetch_nba_player_info(select_sql_per_player, player_uid):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(select_sql_per_player, (player_uid, ))
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return row
+
 def hs_ai_report_exists(player_uid, class_year):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -26,7 +35,7 @@ def hs_ai_report_exists(player_uid, class_year):
     
     return exists
 
-def nba_ai_report_exists(player_uid):
+def nba_ai_report_exists(player_uid, is_active):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT 1 FROM ai_generated_nba_evaluations WHERE player_uid = %s LIMIT 1", (player_uid,))

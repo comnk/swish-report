@@ -37,8 +37,6 @@ export default async function PlayerPage({ params }: { params: Params }) {
     videos = await videoRes.json(); // assuming it's an array of YouTube URLs
   }
 
-  console.log(videos);
-
   const getGradeColor = (rating: number) => {
     if (rating >= 93) return "text-green-600 bg-green-50"; // A+
     if (rating >= 90) return "text-green-500 bg-green-50"; // A-

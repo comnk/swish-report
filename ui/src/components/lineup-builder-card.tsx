@@ -1,6 +1,7 @@
 "use client";
 
 import { useDraggable } from "@dnd-kit/core";
+import Link from "next/link";
 
 type Props = {
   id: string;
@@ -45,7 +46,9 @@ export default function PlayerCard({
       {...listeners}
       className="cursor-grab rounded-lg border bg-white p-3 shadow-md flex flex-col justify-between gap-1 text-sm break-words"
     >
-      <div className="font-semibold text-center break-words">{name}</div>
+      <div className="font-semibold text-center break-words">
+        <Link href={`/scouting-reports/nba/${id}`}>{name}</Link>
+      </div>
       <div className="text-xs text-gray-500 text-center">{position}</div>
       <div className="flex justify-center items-center gap-2 text-xs text-gray-700 mt-1">
         <span>⭐ {stars}</span>
