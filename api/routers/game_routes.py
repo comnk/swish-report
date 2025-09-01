@@ -21,3 +21,7 @@ def poeltl_get_players():
 @router.get("/poeltl/get-player")
 def poeltl_get_daily_player():
     pass
+
+@router.get("/lineup-builder")
+def get_lineup_analysis():
+    pass
