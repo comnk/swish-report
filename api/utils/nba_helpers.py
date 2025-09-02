@@ -80,5 +80,4 @@ def get_nba_youtube_videos(
         if len(selected_videos) >= max_videos:
             break
 
-    print(f"Selected videos for {full_name}: {selected_videos}")
     return selected_videos

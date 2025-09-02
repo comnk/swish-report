@@ -38,14 +38,17 @@ You need to evaluate whether or not the user's hypothetical lineup will work wel
 Return a valid JSON object exactly like this. Do NOT include any links, sources, references, or markdown formatting of any kind:
 
 {
-  "overallScore": 0-100,   // an integer rating of how effective this lineup would be
+  "overallScore": 0-100,   // an integer rating of how effective this lineup would be (integer ONLY)
   "strengths": [ "string", "string" ],  // list of key strengths
   "weaknesses": [ "string", "string" ], // list of key weaknesses
   "synergyNotes": "string" // explanation of how well these players fit together
+  "floor": "string" // what this team can accomplish at minimum
+  "ceiling": "string" // what this team could become realistically
+  "overallAnalysis": "string" // overall analysis of this lineup and how they would perform together
 }
 
 Rules:
-- Do not consider age, experience, past history playing together, criminal history, or the fact that some players played in different eras.
+- Do not consider age, experience, past history playing together, criminal history, potential skillset (like IF a player develops a jump shot), or the fact that some players played in different eras.
 - Only consider skillsets, roles, and potential chemistry.
 - Assume players are at their peak skill level.
 - Do not reward a lineup simply for being full of all-stars.
@@ -67,5 +70,18 @@ def user_content(ranking_info_json, player_name, high_school, class_year):
 def nba_player_content(player_name, player_info):
     user_content = f"""
     Please give me an NBA scouting report for {player_name} in the JSON format I requested, given this player info {player_info}. Keep it plain text with no hyperlinks or citations, and return strictly valid JSON."""
+    
+    return user_content
+
+def nba_lineup_content(mode, player_info):
+    if (mode == "starting5"):
+        user_content = f"""
+        Provide a scouting report for this starting lineup. Here is the starting lineup of players (and each of their details) that the user provided: {player_info}
+        """
+    
+    elif (mode == "rotation"):
+        user_content = f"""
+        Provide a scouting report for this NBA rotation. Here is the rotation of players (and each of their details) that the user provided: {player_info}
+        """
     
     return user_content

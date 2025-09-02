@@ -25,11 +25,9 @@ export default function Court({ lineup, setLineup, mode }: CourtProps) {
   const [search, setSearch] = useState("");
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
-  // Dynamically pick slots
-  const positions =
-    mode === "starting5"
-      ? ["PG", "SG", "SF", "PF", "C"]
-      : ["PG1", "PG2", "SG1", "SG2", "SF1", "SF2", "PF1", "PF2", "C1", "C2"];
+  // Slot grouping
+  const starters = ["PG", "SG", "SF", "PF", "C"];
+  const bench = ["Bench1", "Bench2", "Bench3", "Bench4", "Bench5"];
 
   useEffect(() => {
     async function fetchNBAPlayers() {
@@ -94,6 +92,7 @@ export default function Court({ lineup, setLineup, mode }: CourtProps) {
 
   const handleDragStart = (event: DragStartEvent) =>
     setActiveDragId(event.active.id.toString());
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveDragId(null);
@@ -105,7 +104,8 @@ export default function Court({ lineup, setLineup, mode }: CourtProps) {
     setLineup((prev) => {
       const updated = { ...prev };
 
-      if (positions.includes(target)) {
+      if (Object.keys(updated).includes(target)) {
+        // Remove player from any previous slot
         Object.keys(updated).forEach((pos) => {
           if (updated[pos] === playerId) updated[pos] = null;
         });
@@ -123,25 +123,31 @@ export default function Court({ lineup, setLineup, mode }: CourtProps) {
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col items-center space-y-6 w-full">
-        {/* Court slots */}
-        <div
-          className={`grid gap-6 mb-4 ${
-            mode === "starting5"
-              ? "grid-cols-5"
-              : "grid-cols-5 sm:grid-cols-5 md:grid-cols-5 lg:grid-cols-5 xl:grid-cols-5" // 2 rows of 5
-          }`}
-        >
-          {positions.map((pos, idx) => (
-            <div
+        {/* Starters */}
+        <div className="grid grid-cols-5 gap-4 mb-6">
+          {starters.map((pos) => (
+            <LineupSlot
               key={pos}
-              className={`${
-                mode === "rotation" ? (idx < 5 ? "mt-0" : "mt-4") : ""
-              }`}
-            >
-              <LineupSlot id={pos} playerId={lineup[pos]} players={players} />
-            </div>
+              id={pos}
+              playerId={lineup[pos]}
+              players={players}
+            />
           ))}
         </div>
+
+        {/* Bench (only in rotation mode) */}
+        {mode === "rotation" && (
+          <div className="grid grid-cols-5 gap-4 mb-6">
+            {bench.map((pos) => (
+              <LineupSlot
+                key={pos}
+                id={pos}
+                playerId={lineup[pos]}
+                players={players}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Search */}
         <input

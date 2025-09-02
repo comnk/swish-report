@@ -31,16 +31,16 @@ function LineupBuilderFormInner() {
       mode === "starting5"
         ? { PG: null, SG: null, SF: null, PF: null, C: null }
         : {
-            PG1: null,
-            PG2: null,
-            SG1: null,
-            SG2: null,
-            SF1: null,
-            SF2: null,
-            PF1: null,
-            PF2: null,
-            C1: null,
-            C2: null,
+            PG: null,
+            SG: null,
+            SF: null,
+            PF: null,
+            C: null,
+            Bench1: null,
+            Bench2: null,
+            Bench3: null,
+            Bench4: null,
+            Bench5: null,
           };
     setLineup(initialLineup);
   }, [mode]);
@@ -52,34 +52,34 @@ function LineupBuilderFormInner() {
 
     console.log(lineup);
 
-    // try {
-    //   const res = await fetch(
-    //     "http://localhost:8000/games/lineup-builder/submit-player",
-    //     {
-    //       method: "POST",
-    //       headers: { "Content-Type": "application/json" },
-    //       body: JSON.stringify({ mode, lineup }),
-    //     }
-    //   );
+    try {
+      const res = await fetch(
+        "http://localhost:8000/games/lineup-builder/submit-lineup",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode, lineup }),
+        }
+      );
 
-    //   if (!res.ok) {
-    //     const errorData = await res.json();
-    //     throw new Error(errorData.detail || "Submission failed");
-    //   }
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Submission failed");
+      }
 
-    //   const data = await res.json();
-    //   console.log("✅ Submission success:", data);
-    //   setSubmitStatus("success");
+      const data = await res.json();
+      console.log("✅ Submission success:", data);
+      setSubmitStatus("success");
 
-    //   // Optional: redirect to analysis page if backend returns an ID
-    //   // if (data.analysis_id) window.location.href = `/games/lineup-builder/analysis/${data.analysis_id}`;
-    // } catch (err: unknown) {
-    //   console.error(err);
-    //   setSubmitStatus("error");
-    //   setErrorMessage(err instanceof Error ? err.message : "Unknown error");
-    // } finally {
-    //   setIsSubmitting(false);
-    // }
+      // Optional: redirect to analysis page if backend returns an ID
+      // if (data.analysis_id) window.location.href = `/games/lineup-builder/analysis/${data.analysis_id}`;
+    } catch (err: unknown) {
+      console.error(err);
+      setSubmitStatus("error");
+      setErrorMessage(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (Object.keys(lineup).length === 0) {
