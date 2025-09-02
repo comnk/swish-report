@@ -11,20 +11,25 @@ import PlayerCard from "./lineup-builder-card";
 import { useEffect, useState } from "react";
 import { NBAPlayer } from "@/types/player";
 
-const positions = ["PG", "SG", "SF", "PF", "C"];
-
 type CourtProps = {
-  lineup: Record<string, string | null>; // Mapping of slot -> player ID
+  lineup: Record<string, string | null>;
   setLineup: React.Dispatch<
     React.SetStateAction<Record<string, string | null>>
   >;
+  mode: "starting5" | "rotation";
 };
 
-export default function Court({ lineup, setLineup }: CourtProps) {
+export default function Court({ lineup, setLineup, mode }: CourtProps) {
   const [players, setPlayers] = useState<NBAPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  // Dynamically pick slots
+  const positions =
+    mode === "starting5"
+      ? ["PG", "SG", "SF", "PF", "C"]
+      : ["PG1", "PG2", "SG1", "SG2", "SF1", "SF2", "PF1", "PF2", "C1", "C2"];
 
   useEffect(() => {
     async function fetchNBAPlayers() {
@@ -87,10 +92,8 @@ export default function Court({ lineup, setLineup }: CourtProps) {
     p.full_name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleDragStart = (event: DragStartEvent) => {
+  const handleDragStart = (event: DragStartEvent) =>
     setActiveDragId(event.active.id.toString());
-  };
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveDragId(null);
@@ -101,8 +104,8 @@ export default function Court({ lineup, setLineup }: CourtProps) {
 
     setLineup((prev) => {
       const updated = { ...prev };
+
       if (positions.includes(target)) {
-        // Remove player from previous slot
         Object.keys(updated).forEach((pos) => {
           if (updated[pos] === playerId) updated[pos] = null;
         });
@@ -112,6 +115,7 @@ export default function Court({ lineup, setLineup }: CourtProps) {
           if (updated[pos] === playerId) updated[pos] = null;
         });
       }
+
       return updated;
     });
   };
@@ -119,15 +123,23 @@ export default function Court({ lineup, setLineup }: CourtProps) {
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col items-center space-y-6 w-full">
-        {/* Court */}
-        <div className="grid grid-cols-5 gap-6 mb-4">
-          {positions.map((pos) => (
-            <LineupSlot
+        {/* Court slots */}
+        <div
+          className={`grid gap-6 mb-4 ${
+            mode === "starting5"
+              ? "grid-cols-5"
+              : "grid-cols-5 sm:grid-cols-5 md:grid-cols-5 lg:grid-cols-5 xl:grid-cols-5" // 2 rows of 5
+          }`}
+        >
+          {positions.map((pos, idx) => (
+            <div
               key={pos}
-              id={pos}
-              playerId={lineup[pos]}
-              players={players}
-            />
+              className={`${
+                mode === "rotation" ? (idx < 5 ? "mt-0" : "mt-4") : ""
+              }`}
+            >
+              <LineupSlot id={pos} playerId={lineup[pos]} players={players} />
+            </div>
           ))}
         </div>
 
@@ -144,49 +156,42 @@ export default function Court({ lineup, setLineup }: CourtProps) {
         <LineupSlot id="LIBRARY" playerId={null} players={[]} isLibrary>
           <div className="h-96 w-full overflow-y-scroll rounded-lg border p-2">
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-              {filteredPlayers.map((p) => {
-                const inLineup = Object.values(lineup).includes(p.id);
-                if (!inLineup) {
-                  return (
-                    <PlayerCard
-                      key={p.id}
-                      id={p.id}
-                      name={p.full_name}
-                      position={p.position}
-                      height={p.height}
-                      weight={p.weight}
-                      overallRating={p.overallRating}
-                      stars={p.stars}
-                    />
-                  );
-                }
-                return null;
-              })}
+              {filteredPlayers.map((p) =>
+                !Object.values(lineup).includes(p.id) ? (
+                  <PlayerCard
+                    key={p.id}
+                    id={p.id}
+                    name={p.full_name}
+                    position={p.position}
+                    height={p.height}
+                    weight={p.weight}
+                    overallRating={p.overallRating}
+                    stars={p.stars}
+                  />
+                ) : null
+              )}
             </div>
           </div>
         </LineupSlot>
 
         {/* Drag overlay */}
         <DragOverlay>
-          {activeDragId
-            ? (() => {
-                const player = players.find((p) => p.id === activeDragId);
-                if (!player) return null;
-
-                return (
-                  <PlayerCard
-                    id={player.id}
-                    name={player.full_name}
-                    position={player.position}
-                    height={player.height}
-                    weight={player.weight}
-                    overallRating={player.overallRating}
-                    stars={player.stars}
-                    isOverlay
-                  />
-                );
-              })()
-            : null}
+          {activeDragId &&
+            (() => {
+              const player = players.find((p) => p.id === activeDragId);
+              return player ? (
+                <PlayerCard
+                  id={player.id}
+                  name={player.full_name}
+                  position={player.position}
+                  height={player.height}
+                  weight={player.weight}
+                  overallRating={player.overallRating}
+                  stars={player.stars}
+                  isOverlay
+                />
+              ) : null;
+            })()}
         </DragOverlay>
       </div>
     </DndContext>

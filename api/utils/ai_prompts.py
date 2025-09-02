@@ -45,10 +45,10 @@ Return a valid JSON object exactly like this. Do NOT include any links, sources,
 }
 
 Rules:
-- Do not consider age, experience, past history, criminal history, or the fact that some players played in different eras.
+- Do not consider age, experience, past history playing together, criminal history, or the fact that some players played in different eras.
 - Only consider skillsets, roles, and potential chemistry.
 - Assume players are at their peak skill level.
-- Do not reward a lineup simply for being full of all-stars. 
+- Do not reward a lineup simply for being full of all-stars.
 - Penalize if players overlap too much in skillset, require the ball too much, or create poor balance in defense/offense.
 - Reward lineups that have good spacing, complementary roles (scorers, facilitators, defenders, rebounders), and team balance.
 - If too many high-usage scorers are chosen, explain the diminishing returns.
