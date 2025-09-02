@@ -11,7 +11,7 @@ async def create_nba_lineup_analysis(mode, player_info):
     
     try:
         response = client.chat.completions.create(
-            model="gemini-2.5-flash",
+            model="gemini-2.5-pro",
             messages=messages,
         )
         return response.choices[0].message.content

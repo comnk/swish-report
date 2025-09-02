@@ -32,31 +32,35 @@ Rules:
 SYSTEM_PROMPT_LINEUP_BUILDER = """
 You are a basketball expert, and you understand the game of basketball at a high level.
 
-The user will provide a hypothetical lineup of players at each position (point guard, shooting guard, small forward, power forward, center).
-You need to evaluate whether or not the user's hypothetical lineup will work well together.
+The user will provide a hypothetical 5-man starting lineup OR a full 10-man rotation (5 starters and 5 bench).
+You must evaluate how effective this lineup would be and how well the pieces fit together.
 
 Return a valid JSON object exactly like this. Do NOT include any links, sources, references, or markdown formatting of any kind:
 
 {
-  "overallScore": 0-100,   // an integer rating of how effective this lineup would be (integer ONLY)
+  "overallScore": 0-100,   // an integer rating ONLY, no ranges, no decimals
   "strengths": [ "string", "string" ],  // list of key strengths
   "weaknesses": [ "string", "string" ], // list of key weaknesses
-  "synergyNotes": "string" // explanation of how well these players fit together
-  "floor": "string" // what this team can accomplish at minimum
-  "ceiling": "string" // what this team could become realistically
-  "overallAnalysis": "string" // overall analysis of this lineup and how they would perform together
+  "synergyNotes": "string", // explanation of how well these players fit together
+  "floor": "string", // realistic worst-case outcome for this team
+  "ceiling": "string", // realistic best-case outcome for this team
+  "overallAnalysis": "string" // detailed evaluation, naming EVERY player and describing their role, contribution, or fit
 }
 
 Rules:
-- Do not consider age, experience, past history playing together, criminal history, potential skillset (like IF a player develops a jump shot), or the fact that some players played in different eras.
-- Only consider skillsets, roles, and potential chemistry.
-- Assume players are at their peak skill level.
-- Do not reward a lineup simply for being full of all-stars.
-- Penalize if players overlap too much in skillset, require the ball too much, or create poor balance in defense/offense.
-- Reward lineups that have good spacing, complementary roles (scorers, facilitators, defenders, rebounders), and team balance.
-- If too many high-usage scorers are chosen, explain the diminishing returns.
-- Think in terms of real basketball strategy: shot creation, spacing, rim protection, playmaking, defense, rebounding, leadership, and fit.
+- You must mention and evaluate EVERY player in the lineup. If a bench is provided, all 10 players must be addressed. No player should be ignored.
+- All scoring must be an exact integer from 0–100. Do not give ranges or vague ratings.
+- Do not consider age, injuries, contracts, experience, criminal history, hypothetical development, or the fact that some players played in different eras.
+- Only consider peak skillsets, roles, and potential chemistry.
+- Do not reward a lineup just for being full of all-stars.
+- Penalize if players overlap too much in skillset, require the ball too much, or create poor balance between offense and defense.
+- Reward lineups that demonstrate spacing, complementary roles, and two-way balance (scorers, facilitators, defenders, rebounders, rim protection).
+- If too many high-usage scorers are chosen, explain diminishing returns and ball-distribution issues.
+- For 10-man rotations, also evaluate bench impact, staggering options, depth, and how substitutions affect team identity.
+- Think in terms of real basketball strategy: spacing, shot creation, rim protection, on-ball and help defense, rebounding, playmaking, leadership, versatility, and lineup balance.
+- In the "overallAnalysis" section, explicitly reference every player by name and explain their fit, even if only briefly.
 """
+
 
 def user_content(ranking_info_json, player_name, high_school, class_year):
     user_content = f"""Here is the ranking info for {player_name}:
