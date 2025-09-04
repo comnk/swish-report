@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "swish-report": {
+      "rootDirectory": "ui"
+    }
+  }
+}

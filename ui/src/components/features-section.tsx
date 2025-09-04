@@ -4,7 +4,7 @@ import {
   GraduationCap,
   Trophy,
   Star,
-  TrendingUp,
+  Flame,
   Users,
   BarChart3,
 } from "lucide-react";
@@ -37,11 +37,11 @@ export default function FeaturesSection() {
       color: "bg-purple-500",
     },
     {
-      icon: TrendingUp,
-      title: "Draft Projections",
+      icon: Flame,
+      title: "Hot Takes",
       description:
-        "Real-time NBA draft rankings with AI-powered projections and team fit analysis for upcoming prospects.",
-      href: "/draft",
+        "Read about, discuss with others, and bring your spiciest takes about your favorite NBA players to the table!",
+      href: "/community/hot-takes",
       color: "bg-orange-500",
     },
     {
