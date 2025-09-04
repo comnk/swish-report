@@ -1,10 +1,24 @@
 from openai import OpenAI
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
+from authlib.integrations.starlette_client import OAuth
 
 import os
 
 load_dotenv()
+
+def set_google_oauth():
+    # ----- Google OAuth -----
+    oauth = OAuth()
+    oauth.register(
+        name="google",
+        client_id=os.getenv("GOOGLE_CLIENT_ID"),
+        client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+        client_kwargs={"scope": "openid email profile"},
+    )
+    
+    return oauth
 
 def set_openai():
     OPENAI_KEY = os.getenv('OPENAI_KEY')

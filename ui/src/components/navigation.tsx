@@ -2,13 +2,44 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, BarChart3, ChevronDown } from "lucide-react";
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
 
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // ----- Detect auth status -----
+  useEffect(() => {
+    // Parse query string manually (no useSearchParams)
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get("token");
+
+    if (urlToken) {
+      localStorage.setItem("token", urlToken);
+      setIsAuthenticated(true);
+
+      // Clean up URL (remove ?token=...)
+      router.replace(pathname);
+    } else {
+      // Fall back to localStorage
+      const storedToken = localStorage.getItem("token");
+      setIsAuthenticated(!!storedToken);
+    }
+  }, [pathname, router]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setIsAuthenticated(false);
+    window.location.href = "/";
+  };
+
+  // ----- Dropdown config -----
   const scoutingItems = [
     { name: "High School", href: "/scouting-reports/high-school" },
     { name: "College", href: "/scouting-reports/college" },
@@ -104,12 +135,29 @@ export default function Navigation() {
               </div>
             ))}
 
-            <Link
-              href="/login"
-              className="border border-orange-600 text-orange-600 px-6 py-2 rounded-lg font-medium hover:bg-orange-50 transition-colors"
-            >
-              Log In
-            </Link>
+            {!isAuthenticated ? (
+              <Link
+                href="/login"
+                className="border border-orange-600 text-orange-600 px-6 py-2 rounded-lg font-medium hover:bg-orange-50 transition-colors"
+              >
+                Log In
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="text-slate-700 hover:text-orange-600 font-medium"
+                >
+                  Dashboard
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="border border-red-500 text-red-500 px-6 py-2 rounded-lg font-medium hover:bg-red-50 transition-colors"
+                >
+                  Log Out
+                </button>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -166,13 +214,34 @@ export default function Navigation() {
               </div>
             ))}
 
-            <Link
-              href="/login"
-              className="border border-orange-600 text-orange-600 px-6 py-2 rounded-lg font-medium hover:bg-orange-50 transition-colors w-fit"
-              onClick={() => setIsOpen(false)}
-            >
-              Log In
-            </Link>
+            {!isAuthenticated ? (
+              <Link
+                href="/login"
+                className="border border-orange-600 text-orange-600 px-6 py-2 rounded-lg font-medium hover:bg-orange-50 transition-colors w-fit"
+                onClick={() => setIsOpen(false)}
+              >
+                Log In
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="text-slate-700 hover:text-orange-600 font-medium"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsOpen(false);
+                  }}
+                  className="border border-red-500 text-red-500 px-6 py-2 rounded-lg font-medium hover:bg-red-50 transition-colors w-fit"
+                >
+                  Log Out
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

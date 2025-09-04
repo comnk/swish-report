@@ -38,7 +38,6 @@ Jinja2==3.1.6
 jiter==0.10.0
 jsonschema==4.25.0
 jsonschema-specifications==2025.4.1
-jwt==1.4.0
 kombu==5.5.4
 markdown-it-py==3.0.0
 MarkupSafe==3.0.2
@@ -64,6 +63,7 @@ pydantic-settings==2.10.1
 pydantic_core==2.33.2
 pyee==13.0.0
 Pygments==2.19.2
+PyJWT==2.10.1
 pyparsing==3.2.3
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1

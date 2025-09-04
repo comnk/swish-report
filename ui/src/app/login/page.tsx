@@ -90,7 +90,13 @@ export default function Login() {
         </form>
 
         {/* Google login button */}
-        <button className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 flex items-center justify-center">
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = "http://localhost:8000/auth/google/login";
+          }}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 flex items-center justify-center"
+        >
           <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
             <path
               fill="#4285F4"
