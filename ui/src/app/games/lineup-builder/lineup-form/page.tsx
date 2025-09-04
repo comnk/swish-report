@@ -50,14 +50,24 @@ function LineupBuilderFormInner() {
     setSubmitStatus("idle");
     setErrorMessage(null);
 
-    console.log(lineup);
+    // 🔒 Check if user is logged in
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setIsSubmitting(false);
+      setSubmitStatus("error");
+      setErrorMessage("You must be signed in to submit a lineup.");
+      return;
+    }
 
     try {
       const res = await fetch(
         "http://localhost:8000/games/lineup-builder/submit-lineup",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // send token to backend
+          },
           body: JSON.stringify({ mode, lineup }),
         }
       );
@@ -70,9 +80,6 @@ function LineupBuilderFormInner() {
       const data = await res.json();
       console.log("✅ Submission success:", data);
       setSubmitStatus("success");
-
-      // Optional: redirect to analysis page if backend returns an ID
-      // if (data.analysis_id) window.location.href = `/games/lineup-builder/analysis/${data.analysis_id}`;
     } catch (err: unknown) {
       console.error(err);
       setSubmitStatus("error");
@@ -83,7 +90,7 @@ function LineupBuilderFormInner() {
   };
 
   if (Object.keys(lineup).length === 0) {
-    return <p>Loading lineup...</p>; // optional loading
+    return <p>Loading lineup...</p>;
   }
 
   return (

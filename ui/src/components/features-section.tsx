@@ -49,7 +49,7 @@ export default function FeaturesSection() {
       title: "Team Building",
       description:
         "Strategic insights for roster construction, player combinations, and team chemistry optimization.",
-      href: "/games/lineup-builder",
+      href: "/games/lineup-builder/landing-page",
       color: "bg-red-500",
     },
     {

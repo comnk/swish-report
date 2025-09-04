@@ -14,22 +14,16 @@ export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // ----- Detect auth status -----
   useEffect(() => {
-    // Parse query string manually (no useSearchParams)
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get("token");
 
     if (urlToken) {
       localStorage.setItem("token", urlToken);
       setIsAuthenticated(true);
-
-      // Clean up URL (remove ?token=...)
-      router.replace(pathname);
+      router.replace(pathname); // clean up ?token
     } else {
-      // Fall back to localStorage
-      const storedToken = localStorage.getItem("token");
-      setIsAuthenticated(!!storedToken);
+      setIsAuthenticated(!!localStorage.getItem("token"));
     }
   }, [pathname, router]);
 
@@ -112,12 +106,9 @@ export default function Navigation() {
                       ? "bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700"
                       : "text-slate-700 hover:text-orange-600"
                   }`}
-                  aria-haspopup="true"
-                  aria-expanded={openDropdown === dropdown.name}
                 >
                   {dropdown.name} <ChevronDown className="h-4 w-4 ml-1" />
                 </button>
-
                 {openDropdown === dropdown.name && (
                   <div className="absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-slate-200 py-2 z-50">
                     {dropdown.items.map((item) => (
@@ -143,20 +134,34 @@ export default function Navigation() {
                 Log In
               </Link>
             ) : (
-              <>
-                <Link
-                  href="/dashboard"
-                  className="text-slate-700 hover:text-orange-600 font-medium"
-                >
-                  Dashboard
-                </Link>
+              <div className="relative">
                 <button
-                  onClick={handleLogout}
-                  className="border border-red-500 text-red-500 px-6 py-2 rounded-lg font-medium hover:bg-red-50 transition-colors"
+                  onClick={() => toggleDropdown("Account")}
+                  className="flex items-center text-slate-700 hover:text-orange-600 font-medium"
                 >
-                  Log Out
+                  Account <ChevronDown className="h-4 w-4 ml-1" />
                 </button>
-              </>
+                {openDropdown === "Account" && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border border-slate-200 py-2 z-50">
+                    <Link
+                      href="/dashboard"
+                      className="block px-4 py-2 text-slate-700 hover:bg-orange-50 hover:text-orange-600"
+                      onClick={closeDropdowns}
+                    >
+                      Dashboard
+                    </Link>
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        closeDropdowns();
+                      }}
+                      className="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50"
+                    >
+                      Log Out
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
@@ -223,24 +228,37 @@ export default function Navigation() {
                 Log In
               </Link>
             ) : (
-              <>
-                <Link
-                  href="/dashboard"
-                  className="text-slate-700 hover:text-orange-600 font-medium"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Dashboard
-                </Link>
+              <div>
                 <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsOpen(false);
-                  }}
-                  className="border border-red-500 text-red-500 px-6 py-2 rounded-lg font-medium hover:bg-red-50 transition-colors w-fit"
+                  onClick={() => toggleDropdown("AccountMobile")}
+                  className="flex items-center justify-between w-full px-4 py-2 font-medium text-slate-700 hover:text-orange-600"
                 >
-                  Log Out
+                  Account <ChevronDown className="h-4 w-4 ml-1" />
                 </button>
-              </>
+                {openDropdown === "AccountMobile" && (
+                  <div className="ml-2 mt-2 flex flex-col space-y-2">
+                    <Link
+                      href="/dashboard"
+                      className="text-slate-600 hover:text-orange-600 transition-colors"
+                      onClick={() => {
+                        closeDropdowns();
+                        setIsOpen(false);
+                      }}
+                    >
+                      Dashboard
+                    </Link>
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsOpen(false);
+                      }}
+                      className="text-red-500 hover:text-red-600 text-left"
+                    >
+                      Log Out
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
