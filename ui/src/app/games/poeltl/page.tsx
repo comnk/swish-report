@@ -12,11 +12,27 @@ export default function Poeltl() {
   const [targetPlayer, setTargetPlayer] = useState<NBAPlayer | null>(null);
   const [guesses, setGuesses] = useState<NBAPlayer[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [gameEnded, setGameEnded] = useState(false); // disables search bar after closing modal
+  const [gameEnded, setGameEnded] = useState(false);
 
   const MAX_GUESSES = 8;
 
+  // Authentication states
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkedAuth, setCheckedAuth] = useState(false);
+
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    setIsAuthenticated(!!token);
+    setCheckedAuth(true); // finished checking auth
+  }, []);
+
+  // Fetch players and target only if logged in
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLoading(false); // stop loading if not logged in
+      return;
+    }
+
     async function fetchNBAPlayers() {
       try {
         const res = await fetch("http://localhost:8000/nba/players");
@@ -50,12 +66,9 @@ export default function Poeltl() {
             },
           })
         );
-
         setPlayers(mappedPlayers);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
+      } catch (err) {
+        console.error(err);
       }
     }
 
@@ -68,7 +81,7 @@ export default function Poeltl() {
           throw new Error(`Error fetching target player: ${res.status}`);
 
         const data = await res.json();
-        const target = {
+        const target: NBAPlayer = {
           id: "target",
           full_name: data.full_name,
           position: data.position,
@@ -89,19 +102,26 @@ export default function Poeltl() {
             per: 0,
             winShares: 0,
           },
-        } as NBAPlayer;
-
+          stars: 0,
+          strengths: [],
+          weaknesses: [],
+          aiAnalysis: "",
+          overallRating: 0,
+        };
         setTargetPlayer(target);
-      } catch (error) {
-        console.error(error);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
     }
 
     fetchNBAPlayers();
     fetchTargetPlayer();
-  }, []);
+  }, [isAuthenticated]);
 
-  function handleGuess(playerName: string) {
+  const handleGuess = (playerName: string) => {
+    if (!isAuthenticated) return; // block if not logged in
     if (!targetPlayer || gameEnded) return;
 
     const guessedPlayer = players.find((p) => p.full_name === playerName);
@@ -109,135 +129,146 @@ export default function Poeltl() {
 
     setGuesses((prev) => {
       const newGuesses = [...prev, guessedPlayer];
-
-      // Show modal if correct or out of guesses
       if (
         guessedPlayer.full_name === targetPlayer.full_name ||
         newGuesses.length >= MAX_GUESSES
       ) {
         setShowModal(true);
       }
-
       return newGuesses;
     });
-  }
+  };
 
-  function compareGuess(guess: NBAPlayer, target: NBAPlayer) {
-    return {
-      position: guess.position === target.position,
-      height:
-        guess.height === target.height
-          ? "equal"
-          : guess.height > target.height
-          ? "lower"
-          : "higher",
-      weight:
-        guess.weight === target.weight
-          ? "equal"
-          : guess.weight > target.weight
-          ? "lower"
-          : "higher",
-      years_pro:
-        guess.years_pro === target.years_pro
-          ? "equal"
-          : Number(guess.years_pro) > Number(target.years_pro)
-          ? "lower"
-          : "higher",
-      team: guess.team_names.some((t) => target.team_names.includes(t)),
-    };
-  }
+  const compareGuess = (guess: NBAPlayer, target: NBAPlayer) => ({
+    position: guess.position === target.position,
+    height:
+      guess.height === target.height
+        ? "equal"
+        : guess.height > target.height
+        ? "lower"
+        : "higher",
+    weight:
+      guess.weight === target.weight
+        ? "equal"
+        : guess.weight > target.weight
+        ? "lower"
+        : "higher",
+    years_pro:
+      guess.years_pro === target.years_pro
+        ? "equal"
+        : Number(guess.years_pro) > Number(target.years_pro)
+        ? "lower"
+        : "higher",
+    team: guess.team_names.some((t) => target.team_names.includes(t)),
+  });
+
+  if (!checkedAuth) return <p className="p-6">Checking login...</p>;
+
+  if (!isAuthenticated)
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <Navigation />
+        <div className="flex flex-col items-center justify-center p-6 mt-8">
+          <p className="text-red-600 text-lg font-medium mb-4">
+            You must be signed in to play Poeltl.
+          </p>
+          <a
+            href="/login"
+            className="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition"
+          >
+            Go to Login
+          </a>
+        </div>
+      </main>
+    );
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <Navigation />
-      <PlayerSearchPoeltl
-        level="nba"
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        allPlayers={players}
-        onSelectPlayer={handleGuess}
-        disabled={gameEnded} // disable search bar after modal closed
-      />
-
       <div className="p-4">
+        <PlayerSearchPoeltl
+          level="nba"
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          allPlayers={players}
+          onSelectPlayer={handleGuess}
+          disabled={gameEnded}
+        />
+
         {loading ? (
           <p>Loading players...</p>
         ) : (
-          <>
-            {targetPlayer && (
-              <>
-                <h2 className="text-xl font-bold mb-2 text-black">Guesses</h2>
-                <table className="min-w-full border border-gray-300 text-black">
-                  <thead className="bg-gray-200">
-                    <tr>
-                      <th className="p-2">Name</th>
-                      <th className="p-2">Position</th>
-                      <th className="p-2">Height</th>
-                      <th className="p-2">Weight</th>
-                      <th className="p-2">Years Pro</th>
-                      <th className="p-2">Team</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {guesses.map((g, idx) => {
-                      const result = compareGuess(g, targetPlayer);
-                      return (
-                        <tr key={idx} className="text-center border-t">
-                          <td className="p-2">{g.full_name}</td>
-                          <td
-                            className={`p-2 ${
-                              result.position ? "bg-green-300" : "bg-red-300"
-                            }`}
-                          >
-                            {g.position}
-                          </td>
-                          <td className="p-2">
-                            {g.height}{" "}
-                            {result.height === "higher"
-                              ? "⬆️"
-                              : result.height === "lower"
-                              ? "⬇️"
-                              : "✅"}
-                          </td>
-                          <td className="p-2">
-                            {g.weight}{" "}
-                            {result.weight === "higher"
-                              ? "⬆️"
-                              : result.weight === "lower"
-                              ? "⬇️"
-                              : "✅"}
-                          </td>
-                          <td className="p-2">
-                            {g.years_pro}{" "}
-                            {result.years_pro === "higher"
-                              ? "⬆️"
-                              : result.years_pro === "lower"
-                              ? "⬇️"
-                              : "✅"}
-                          </td>
-                          <td
-                            className={`p-2 ${
-                              result.team ? "bg-green-300" : "bg-red-300"
-                            }`}
-                          >
-                            {g.team_names.join(", ")}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </>
-            )}
-          </>
+          targetPlayer && (
+            <>
+              <h2 className="text-xl font-bold my-4 text-black">Guesses</h2>
+              <table className="min-w-full border border-gray-300 text-black">
+                <thead className="bg-gray-200">
+                  <tr>
+                    <th className="p-2">Name</th>
+                    <th className="p-2">Position</th>
+                    <th className="p-2">Height</th>
+                    <th className="p-2">Weight</th>
+                    <th className="p-2">Years Pro</th>
+                    <th className="p-2">Team</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {guesses.map((g, idx) => {
+                    const result = compareGuess(g, targetPlayer);
+                    return (
+                      <tr key={idx} className="text-center border-t">
+                        <td className="p-2">{g.full_name}</td>
+                        <td
+                          className={`p-2 ${
+                            result.position ? "bg-green-300" : "bg-red-300"
+                          }`}
+                        >
+                          {g.position}
+                        </td>
+                        <td className="p-2">
+                          {g.height}{" "}
+                          {result.height === "higher"
+                            ? "⬆️"
+                            : result.height === "lower"
+                            ? "⬇️"
+                            : "✅"}
+                        </td>
+                        <td className="p-2">
+                          {g.weight}{" "}
+                          {result.weight === "higher"
+                            ? "⬆️"
+                            : result.weight === "lower"
+                            ? "⬇️"
+                            : "✅"}
+                        </td>
+                        <td className="p-2">
+                          {g.years_pro}{" "}
+                          {result.years_pro === "higher"
+                            ? "⬆️"
+                            : result.years_pro === "lower"
+                            ? "⬇️"
+                            : "✅"}
+                        </td>
+                        <td
+                          className={`p-2 ${
+                            result.team ? "bg-green-300" : "bg-red-300"
+                          }`}
+                        >
+                          {g.team_names.join(", ")}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
+          )
         )}
       </div>
 
-      {/* Modal */}
       {showModal && targetPlayer && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-100/30 backdrop-blur-sm z-50">
           <div className="relative bg-white rounded-3xl shadow-xl p-8 max-w-sm w-full text-center">
-            {/* X button */}
             <button
               onClick={() => {
                 setShowModal(false);
