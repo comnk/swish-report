@@ -1,8 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from core.db import get_db_connection
 from scripts.insertion.ai_generation.insert_nba_lineup_analysis import create_nba_lineup_analysis
 from random import randint
+
+import json
 
 router = APIRouter()
 
@@ -29,48 +31,79 @@ def poeltl_get_daily_player():
 
 
 @router.post("/lineup-builder/submit-lineup", response_model=dict)
-async def get_lineup_analysis(submission: LineupSubmission):
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)  # return rows as dicts
-
-    # Prepare player_ids
-    player_ids = list(submission.lineup.values())
-    placeholders = ",".join(["%s"] * len(player_ids))
-
-    # Safe query with aliases
-    select_sql = f"""
-        SELECT
-            p.player_uid,
-            p.full_name,
-            nba.position,
-            nba.height,
-            nba.weight,
-            nba.years_pro,
-            nba.accolades,
-            ai.stars,
-            ai.rating,
-            ai.strengths,
-            ai.weaknesses,
-            ai.ai_analysis
-        FROM players AS p
-        INNER JOIN nba_player_info AS nba
-            ON p.player_uid = nba.player_uid
-        INNER JOIN ai_generated_nba_evaluations AS ai
-            ON p.player_uid = ai.player_uid
-        WHERE p.player_uid IN ({placeholders})
+async def get_lineup_analysis(submission: LineupSubmission, user_id: int):
     """
+    Takes a lineup submission, generates AI analysis, and inserts into the DB.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
 
-    cursor.execute(select_sql, player_ids)
-    results = cursor.fetchall()
+    try:
+        # Extract player IDs from lineup
+        player_ids = list(submission.lineup.values())
+        placeholders = ",".join(["%s"] * len(player_ids))
 
-    analysis_info = await create_nba_lineup_analysis(submission.mode, results)
-    print(analysis_info)
-    
-    cursor.close()
-    conn.close()
+        select_sql = f"""
+            SELECT
+                p.player_uid,
+                p.full_name,
+                nba.position,
+                nba.height,
+                nba.weight,
+                nba.years_pro,
+                nba.accolades,
+                ai.stars,
+                ai.rating,
+                ai.strengths,
+                ai.weaknesses,
+                ai.ai_analysis
+            FROM players AS p
+            INNER JOIN nba_player_info AS nba
+                ON p.player_uid = nba.player_uid
+            INNER JOIN ai_generated_nba_evaluations AS ai
+                ON p.player_uid = ai.player_uid
+            WHERE p.player_uid IN ({placeholders})
+        """
+        cursor.execute(select_sql, player_ids)
+        results = cursor.fetchall()
 
-    return {
-        "message": "AI analysis placeholder",
-        "players_fetched": len(results),
-        "players": results,   # now you can return actual player data
-    }
+        if not results:
+            raise HTTPException(status_code=404, detail="No players found for lineup")
+
+        # Get AI analysis (string)
+        analysis_str = await create_nba_lineup_analysis(submission.mode, results)
+
+        # Try parsing analysis into JSON
+        try:
+            analysis_json = json.loads(analysis_str)
+        except Exception:
+            raise HTTPException(status_code=500, detail="AI analysis did not return valid JSON")
+
+        # Insert lineup into DB
+        insert_sql = """
+            INSERT INTO lineups (user_id, mode, players, scouting_report)
+            VALUES (%s, %s, %s, %s)
+        """
+        cursor.execute(
+            insert_sql,
+            (
+                user_id,
+                submission.mode,
+                json.dumps(submission.lineup),     # lineup dict as JSON
+                json.dumps(analysis_json),        # AI analysis JSON
+            )
+        )
+        conn.commit()
+
+        lineup_id = cursor.lastrowid
+
+        return {
+            "message": "Lineup submitted successfully",
+            "lineup_id": lineup_id,
+            "scouting_report": analysis_json,
+            "players": results,
+        }
+
+    finally:
+        cursor.close()
+        conn.close()

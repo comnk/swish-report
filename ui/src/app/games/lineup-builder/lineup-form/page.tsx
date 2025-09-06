@@ -1,24 +1,11 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import Court from "@/components/lineup-builder-court";
 import Navigation from "@/components/navigation";
 
 export default function LineupBuilderForm() {
-  return (
-    <Suspense fallback={<p>Loading lineup...</p>}>
-      <LineupBuilderFormInner />
-    </Suspense>
-  );
-}
-
-function LineupBuilderFormInner() {
-  const searchParams = useSearchParams();
-  const modeParam = searchParams.get("mode");
-  const mode: "starting5" | "rotation" =
-    modeParam === "rotation" ? "rotation" : "starting5";
-
+  const [mode, setMode] = useState<"starting5" | "rotation">("starting5");
   const [lineup, setLineup] = useState<Record<string, string | null>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<
@@ -26,6 +13,14 @@ function LineupBuilderFormInner() {
   >("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Parse mode from query string
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const modeParam = params.get("mode");
+    setMode(modeParam === "rotation" ? "rotation" : "starting5");
+  }, []);
+
+  // Initialize lineup whenever mode changes
   useEffect(() => {
     const initialLineup: Record<string, string | null> =
       mode === "starting5"
@@ -50,7 +45,6 @@ function LineupBuilderFormInner() {
     setSubmitStatus("idle");
     setErrorMessage(null);
 
-    // 🔒 Check if user is logged in
     const token = localStorage.getItem("token");
     if (!token) {
       setIsSubmitting(false);
@@ -66,7 +60,7 @@ function LineupBuilderFormInner() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // send token to backend
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ mode, lineup }),
         }
@@ -90,7 +84,11 @@ function LineupBuilderFormInner() {
   };
 
   if (Object.keys(lineup).length === 0) {
-    return <p>Loading lineup...</p>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
   return (
@@ -108,8 +106,11 @@ function LineupBuilderFormInner() {
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="rounded-lg bg-blue-600 px-6 py-2 text-white font-semibold shadow-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="rounded-lg bg-blue-600 px-6 py-2 text-white font-semibold shadow-md hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
         >
+          {isSubmitting && (
+            <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-white border-b-2 mr-2"></span>
+          )}
           {isSubmitting ? "Submitting..." : "Submit Lineup for AI Analysis"}
         </button>
 

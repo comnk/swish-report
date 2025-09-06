@@ -5,6 +5,11 @@ import PlayerSearchPoeltl from "@/components/player-search-poeltl";
 import { NBAPlayer } from "@/types/player";
 import { useEffect, useState } from "react";
 
+function getLocalDateString(): string {
+  // guarantees YYYY-MM-DD in your local timezone
+  return new Date().toLocaleDateString("en-CA");
+}
+
 export default function Poeltl() {
   const [loading, setLoading] = useState(true);
   const [players, setPlayers] = useState<NBAPlayer[]>([]);
@@ -27,16 +32,17 @@ export default function Poeltl() {
     setIsAuthenticated(!!token);
     setCheckedAuth(true);
 
-    // 🔒 Check if user already played today
+    // 🔒 Check if user already played today (LOCAL TIME)
     const lastPlayed = localStorage.getItem("poeltl_last_played");
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const today = getLocalDateString();
+
     if (lastPlayed === today) {
       setAlreadyPlayedToday(true);
       setGameEnded(true);
     }
   }, []);
 
-  // Fetch players and target only if logged in
+  // Fetch players and target only if logged in & not already played
   useEffect(() => {
     if (!isAuthenticated) {
       setLoading(false);
@@ -135,7 +141,7 @@ export default function Poeltl() {
   }, [isAuthenticated, alreadyPlayedToday]);
 
   const handleGuess = (playerName: string) => {
-    if (!isAuthenticated || alreadyPlayedToday) return; // block if not logged in or already played
+    if (!isAuthenticated || alreadyPlayedToday) return;
     if (!targetPlayer || gameEnded) return;
 
     const guessedPlayer = players.find((p) => p.full_name === playerName);
@@ -149,8 +155,8 @@ export default function Poeltl() {
       ) {
         setShowModal(true);
 
-        // ✅ Mark today as played
-        const today = new Date().toISOString().split("T")[0];
+        // ✅ Mark today as played (LOCAL TIME)
+        const today = getLocalDateString();
         localStorage.setItem("poeltl_last_played", today);
       }
       return newGuesses;
