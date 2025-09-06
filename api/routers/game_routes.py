@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from core.db import get_db_connection
 from scripts.insertion.ai_generation.insert_nba_lineup_analysis import create_nba_lineup_analysis
+from random import randint
 
 router = APIRouter()
 
@@ -9,22 +10,22 @@ class LineupSubmission(BaseModel):
     mode: str
     lineup: dict
 
-@router.get("/poeltl/get-players")
-def poeltl_get_players():
+@router.get("/poeltl/get-player")
+def poeltl_get_daily_player():
     select_sql = """
-    SELECT full_name FROM players;
+    SELECT p.full_name, nba.position, nba.height, nba.weight, nba.years_pro, nba.teams, nba.accolades FROM players AS p INNER JOIN nba_player_info AS nba ON p.player_uid=nba.player_uid WHERE current_level='NBA';
     """
     
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
     cursor.execute(select_sql)
     
-    cursor.close()
-    conn.close()
-
-@router.get("/poeltl/get-player")
-def poeltl_get_daily_player():
-    pass
+    rows = cursor.fetchall()
+    
+    random_index = randint(0, len(rows) - 1)
+    random_player = rows[random_index]
+    print(random_player)
+    return random_player
 
 
 @router.post("/lineup-builder/submit-lineup", response_model=dict)

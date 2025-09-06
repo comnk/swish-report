@@ -9,7 +9,8 @@ interface PlayerSearchProps {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   allPlayers: NBAPlayer[];
-  onSelectPlayer?: (player: string) => void; // optional callback (for guesses)
+  onSelectPlayer?: (player: string) => void;
+  disabled?: boolean; // disables input when game ends
 }
 
 export default function PlayerSearchPoeltl({
@@ -18,33 +19,37 @@ export default function PlayerSearchPoeltl({
   setSearchTerm,
   allPlayers,
   onSelectPlayer,
+  disabled = false,
 }: PlayerSearchProps) {
   const [filteredPlayers, setFilteredPlayers] = useState<NBAPlayer[]>([]);
   const [highlightIndex, setHighlightIndex] = useState(0);
 
   // Autocomplete filter logic
   useEffect(() => {
-    if (!searchTerm.trim()) {
+    if (!searchTerm.trim() || disabled) {
       setFilteredPlayers([]);
       return;
     }
+
     const results = allPlayers
-      .filter((p) =>
-        p["full_name"].toLowerCase().includes(searchTerm.toLowerCase())
+      .filter((p: NBAPlayer) =>
+        p.full_name.toLowerCase().includes(searchTerm.toLowerCase())
       )
       .slice(0, 8);
+
     setFilteredPlayers(results);
     setHighlightIndex(0);
-  }, [searchTerm, allPlayers]);
+  }, [searchTerm, allPlayers, disabled]);
 
   const handleSelectPlayer = (player: NBAPlayer) => {
-    setSearchTerm(player["full_name"]);
+    if (disabled) return;
+    setSearchTerm(player.full_name);
     setFilteredPlayers([]);
-    onSelectPlayer?.(player["full_name"]);
+    onSelectPlayer?.(player.full_name);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (filteredPlayers.length === 0) return;
+    if (disabled || filteredPlayers.length === 0) return;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -60,7 +65,6 @@ export default function PlayerSearchPoeltl({
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
-      {/* Search Input */}
       <div className="relative flex-1 max-w-xl mx-auto">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black h-5 w-5" />
         <input
@@ -71,20 +75,22 @@ export default function PlayerSearchPoeltl({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg shadow-sm
-                        focus:ring-2 focus:ring-orange-500 focus:border-transparent
-                        text-black placeholder-slate-400"
+          disabled={disabled}
+          className={`w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg shadow-sm
+            focus:ring-2 focus:ring-orange-500 focus:border-transparent
+            text-black placeholder-slate-400
+            ${
+              disabled
+                ? "bg-gray-100 cursor-not-allowed"
+                : "bg-white cursor-text"
+            }`}
         />
 
-        {/* Dropdown */}
-        {filteredPlayers.length > 0 && (
-          <ul
-            className="absolute z-10 bg-white border border-slate-200 mt-1 w-full
-                            rounded-lg shadow-lg max-h-64 overflow-y-auto"
-          >
+        {filteredPlayers.length > 0 && !disabled && (
+          <ul className="absolute z-10 bg-white border border-slate-200 mt-1 w-full rounded-lg shadow-lg max-h-64 overflow-y-auto">
             {filteredPlayers.map((player, idx) => (
               <li
-                key={player["id"]}
+                key={player.id}
                 className={`px-4 py-2 cursor-pointer transition-colors ${
                   idx === highlightIndex
                     ? "bg-orange-100 text-orange-900"
@@ -92,7 +98,7 @@ export default function PlayerSearchPoeltl({
                 }`}
                 onMouseDown={() => handleSelectPlayer(player)}
               >
-                {player["full_name"]}
+                {player.full_name}
               </li>
             ))}
           </ul>

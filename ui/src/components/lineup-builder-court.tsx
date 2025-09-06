@@ -123,82 +123,88 @@ export default function Court({ lineup, setLineup, mode }: CourtProps) {
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col items-center space-y-6 w-full">
-        {/* Starters */}
-        <div className="grid grid-cols-5 gap-4 mb-6">
-          {starters.map((pos) => (
-            <LineupSlot
-              key={pos}
-              id={pos}
-              playerId={lineup[pos]}
-              players={players}
-            />
-          ))}
-        </div>
-
-        {/* Bench (only in rotation mode) */}
-        {mode === "rotation" && (
-          <div className="grid grid-cols-5 gap-4 mb-6">
-            {bench.map((pos) => (
-              <LineupSlot
-                key={pos}
-                id={pos}
-                playerId={lineup[pos]}
-                players={players}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Search */}
-        <input
-          type="text"
-          placeholder="Search players..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-md rounded-lg border px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none text-black mb-4"
-        />
-
-        {/* Player library */}
-        <LineupSlot id="LIBRARY" playerId={null} players={[]} isLibrary>
-          <div className="h-96 w-full overflow-y-scroll rounded-lg border p-2">
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-              {filteredPlayers.map((p) =>
-                !Object.values(lineup).includes(p.id) ? (
-                  <PlayerCard
-                    key={p.id}
-                    id={p.id}
-                    name={p.full_name}
-                    position={p.position}
-                    height={p.height}
-                    weight={p.weight}
-                    overallRating={p.overallRating}
-                    stars={p.stars}
-                  />
-                ) : null
-              )}
-            </div>
-          </div>
-        </LineupSlot>
-
-        {/* Drag overlay */}
-        <DragOverlay>
-          {activeDragId &&
-            (() => {
-              const player = players.find((p) => p.id === activeDragId);
-              return player ? (
-                <PlayerCard
-                  id={player.id}
-                  name={player.full_name}
-                  position={player.position}
-                  height={player.height}
-                  weight={player.weight}
-                  overallRating={player.overallRating}
-                  stars={player.stars}
-                  isOverlay
+        {loading ? (
+          <p className="text-gray-600 text-lg">Loading players...</p>
+        ) : (
+          <>
+            {/* Starters */}
+            <div className="grid grid-cols-5 gap-4 mb-6">
+              {starters.map((pos) => (
+                <LineupSlot
+                  key={pos}
+                  id={pos}
+                  playerId={lineup[pos]}
+                  players={players}
                 />
-              ) : null;
-            })()}
-        </DragOverlay>
+              ))}
+            </div>
+
+            {/* Bench (only in rotation mode) */}
+            {mode === "rotation" && (
+              <div className="grid grid-cols-5 gap-4 mb-6">
+                {bench.map((pos) => (
+                  <LineupSlot
+                    key={pos}
+                    id={pos}
+                    playerId={lineup[pos]}
+                    players={players}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Search */}
+            <input
+              type="text"
+              placeholder="Search players..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full max-w-md rounded-lg border px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none text-black mb-4"
+            />
+
+            {/* Player library */}
+            <LineupSlot id="LIBRARY" playerId={null} players={[]} isLibrary>
+              <div className="h-96 w-full overflow-y-scroll rounded-lg border p-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+                  {filteredPlayers.map((p) =>
+                    !Object.values(lineup).includes(p.id) ? (
+                      <PlayerCard
+                        key={p.id}
+                        id={p.id}
+                        name={p.full_name}
+                        position={p.position}
+                        height={p.height}
+                        weight={p.weight}
+                        overallRating={p.overallRating}
+                        stars={p.stars}
+                      />
+                    ) : null
+                  )}
+                </div>
+              </div>
+            </LineupSlot>
+
+            {/* Drag overlay */}
+            <DragOverlay>
+              {activeDragId &&
+                (() => {
+                  const player = players.find((p) => p.id === activeDragId);
+                  return player ? (
+                    <PlayerCard
+                      id={player.id}
+                      name={player.full_name}
+                      position={player.position}
+                      height={player.height}
+                      weight={player.weight}
+                      overallRating={player.overallRating}
+                      stars={player.stars}
+                      isOverlay
+                    />
+                  ) : null;
+                })()}
+            </DragOverlay>
+          </>
+        )}
       </div>
     </DndContext>
   );

@@ -67,7 +67,6 @@ export default function Navigation() {
     setOpenDropdown(openDropdown === name ? null : name);
   const closeDropdowns = () => setOpenDropdown(null);
 
-  // Close dropdown if clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (navRef.current && !navRef.current.contains(e.target as Node)) {
