@@ -14,6 +14,8 @@ export default function Poeltl() {
   const [showModal, setShowModal] = useState(false);
   const [gameEnded, setGameEnded] = useState(false);
 
+  const [alreadyPlayedToday, setAlreadyPlayedToday] = useState(false);
+
   const MAX_GUESSES = 8;
 
   // Authentication states
@@ -23,13 +25,25 @@ export default function Poeltl() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     setIsAuthenticated(!!token);
-    setCheckedAuth(true); // finished checking auth
+    setCheckedAuth(true);
+
+    // 🔒 Check if user already played today
+    const lastPlayed = localStorage.getItem("poeltl_last_played");
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    if (lastPlayed === today) {
+      setAlreadyPlayedToday(true);
+      setGameEnded(true);
+    }
   }, []);
 
   // Fetch players and target only if logged in
   useEffect(() => {
     if (!isAuthenticated) {
-      setLoading(false); // stop loading if not logged in
+      setLoading(false);
+      return;
+    }
+    if (alreadyPlayedToday) {
+      setLoading(false);
       return;
     }
 
@@ -118,10 +132,10 @@ export default function Poeltl() {
 
     fetchNBAPlayers();
     fetchTargetPlayer();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, alreadyPlayedToday]);
 
   const handleGuess = (playerName: string) => {
-    if (!isAuthenticated) return; // block if not logged in
+    if (!isAuthenticated || alreadyPlayedToday) return; // block if not logged in or already played
     if (!targetPlayer || gameEnded) return;
 
     const guessedPlayer = players.find((p) => p.full_name === playerName);
@@ -134,6 +148,10 @@ export default function Poeltl() {
         newGuesses.length >= MAX_GUESSES
       ) {
         setShowModal(true);
+
+        // ✅ Mark today as played
+        const today = new Date().toISOString().split("T")[0];
+        localStorage.setItem("poeltl_last_played", today);
       }
       return newGuesses;
     });
@@ -169,15 +187,22 @@ export default function Poeltl() {
       <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
         <Navigation />
         <div className="flex flex-col items-center justify-center p-6 mt-8">
-          <p className="text-red-600 text-lg font-medium mb-4">
+          <p className="p-6 text-red-600">
             You must be signed in to play Poeltl.
           </p>
-          <a
-            href="/login"
-            className="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition"
-          >
-            Go to Login
-          </a>
+        </div>
+      </main>
+    );
+
+  if (alreadyPlayedToday)
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <Navigation />
+        <div className="flex flex-col items-center justify-center p-6 mt-8">
+          <p className="text-lg font-medium text-black">
+            ✅ You’ve already played Poeltl today! Come back tomorrow for the
+            next round.
+          </p>
         </div>
       </main>
     );
