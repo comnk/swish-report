@@ -1,5 +1,3 @@
-"use client";
-
 import Navigation from "@/components/navigation";
 import { notFound } from "next/navigation";
 
