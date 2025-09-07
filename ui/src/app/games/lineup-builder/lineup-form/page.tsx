@@ -45,8 +45,12 @@ export default function LineupBuilderForm() {
     setSubmitStatus("idle");
     setErrorMessage(null);
 
+    // 🔒 Get token and email from localStorage
     const token = localStorage.getItem("token");
-    if (!token) {
+    const user_email = localStorage.getItem("user_email");
+
+    if (!token || !user_email) {
+      console.log(token, localStorage);
       setIsSubmitting(false);
       setSubmitStatus("error");
       setErrorMessage("You must be signed in to submit a lineup.");
@@ -54,6 +58,8 @@ export default function LineupBuilderForm() {
     }
 
     try {
+      console.log({ mode, lineup, user_email });
+
       const res = await fetch(
         "http://localhost:8000/games/lineup-builder/submit-lineup",
         {
@@ -62,7 +68,7 @@ export default function LineupBuilderForm() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ mode, lineup }),
+          body: JSON.stringify({ mode, lineup, user_id: user_email }), // send email as user_id
         }
       );
 

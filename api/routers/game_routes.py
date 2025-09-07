@@ -3,14 +3,16 @@ from pydantic import BaseModel
 from core.db import get_db_connection
 from scripts.insertion.ai_generation.insert_nba_lineup_analysis import create_nba_lineup_analysis
 from random import randint
+from typing import Dict, Optional, Literal
 
 import json
 
 router = APIRouter()
 
 class LineupSubmission(BaseModel):
-    mode: str
-    lineup: dict
+    mode: Literal["starting5", "rotation"]
+    lineup: Dict[str, Optional[str]]  # positions mapped to player names or null
+    user_id: str
 
 @router.get("/poeltl/get-player")
 def poeltl_get_daily_player():
@@ -31,7 +33,7 @@ def poeltl_get_daily_player():
 
 
 @router.post("/lineup-builder/submit-lineup", response_model=dict)
-async def get_lineup_analysis(submission: LineupSubmission, user_id: int):
+async def get_lineup_analysis(submission: LineupSubmission):
     """
     Takes a lineup submission, generates AI analysis, and inserts into the DB.
     """
@@ -39,7 +41,14 @@ async def get_lineup_analysis(submission: LineupSubmission, user_id: int):
     cursor = conn.cursor(dictionary=True)
 
     try:
-        # Extract player IDs from lineup
+        # Get numeric user_id from email
+        cursor.execute("SELECT user_id FROM users WHERE email = %s", (submission.user_id,))
+        user_row = cursor.fetchone()
+        if not user_row:
+            raise HTTPException(status_code=404, detail="User not found")
+        user_id = user_row["user_id"]
+
+        # Extract player IDs
         player_ids = list(submission.lineup.values())
         placeholders = ",".join(["%s"] * len(player_ids))
 
@@ -70,14 +79,9 @@ async def get_lineup_analysis(submission: LineupSubmission, user_id: int):
         if not results:
             raise HTTPException(status_code=404, detail="No players found for lineup")
 
-        # Get AI analysis (string)
-        analysis_str = await create_nba_lineup_analysis(submission.mode, results)
-
-        # Try parsing analysis into JSON
-        try:
-            analysis_json = json.loads(analysis_str)
-        except Exception:
-            raise HTTPException(status_code=500, detail="AI analysis did not return valid JSON")
+        # Generate AI analysis
+        analysis_json = await create_nba_lineup_analysis(submission.mode, results)
+        print(analysis_json)
 
         # Insert lineup into DB
         insert_sql = """
@@ -89,12 +93,11 @@ async def get_lineup_analysis(submission: LineupSubmission, user_id: int):
             (
                 user_id,
                 submission.mode,
-                json.dumps(submission.lineup),     # lineup dict as JSON
-                json.dumps(analysis_json),        # AI analysis JSON
-            )
+                json.dumps(submission.lineup),
+                json.dumps(analysis_json),  # ✅ safe, already dict
+            ),
         )
         conn.commit()
-
         lineup_id = cursor.lastrowid
 
         return {

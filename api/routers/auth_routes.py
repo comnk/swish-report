@@ -97,8 +97,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @router.get("/google/login")
 async def google_login(request: Request):
-    
-    redirect_uri = request.url_for("google_callback")
+    redirect_uri = "http://localhost:8000/auth/google/callback"
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 @router.get("/google/callback")
@@ -113,7 +112,10 @@ async def google_callback(request: Request):
     cursor = conn.cursor(dictionary=True)
 
     # Check if user exists by google_id or email
-    cursor.execute("SELECT * FROM users WHERE google_id = %s OR email = %s", (user_info["sub"], user_info["email"]))
+    cursor.execute(
+        "SELECT * FROM users WHERE google_id = %s OR email = %s",
+        (user_info["sub"], user_info["email"])
+    )
     user = cursor.fetchone()
 
     if not user:
@@ -130,8 +132,10 @@ async def google_callback(request: Request):
 
     # Issue JWT
     access_token = create_access_token({"sub": user["email"]})
-    response = RedirectResponse(url=f"http://localhost:3000/dashboard?token={access_token}")
-    return response
+
+    # ✅ Append user_email to redirect
+    redirect_url = f"http://localhost:3000/login?token={access_token}&user_email={user['email']}"
+    return RedirectResponse(url=redirect_url)
 
 # ----- Dashboard -----
 @router.get("/dashboard")
