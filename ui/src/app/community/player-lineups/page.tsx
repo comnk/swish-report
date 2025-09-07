@@ -63,47 +63,77 @@ export default function PlayersLineupPage() {
           {lineups.map((lineup) => (
             <div
               key={lineup.lineup_id}
-              className="bg-white rounded-3xl shadow-lg p-6 hover:shadow-2xl transition-shadow duration-300"
+              className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 p-6 flex flex-col justify-between"
             >
-              <h2 className="text-2xl font-semibold mb-2 text-gray-800">
-                Lineup #{lineup.lineup_id}
-              </h2>
-              <p className="text-sm text-gray-500 mb-2">Mode: {lineup.mode}</p>
-              <p className="font-medium text-gray-700 mb-4">
-                Score: {lineup.scouting_report.overallScore}
-              </p>
-
-              <div className="mb-3">
-                <h3 className="text-sm font-semibold text-gray-700 mb-1">
-                  Strengths:
-                </h3>
-                <ul className="list-disc ml-5 text-sm text-green-600">
-                  {lineup.scouting_report.strengths.slice(0, 3).map((s, i) => (
-                    <li key={i}>{s}</li>
-                  ))}
-                </ul>
+              {/* Header */}
+              <div className="mb-4">
+                <h2 className="text-xl font-bold text-gray-900">
+                  Lineup #{lineup.lineup_id}
+                </h2>
+                <p className="text-sm text-gray-500">Mode: {lineup.mode}</p>
               </div>
 
-              <div className="mb-3">
-                <h3 className="text-sm font-semibold text-gray-700 mb-1">
-                  Weaknesses:
-                </h3>
-                <ul className="list-disc ml-5 text-sm text-red-600">
-                  {lineup.scouting_report.weaknesses.slice(0, 3).map((w, i) => (
-                    <li key={i}>{w}</li>
-                  ))}
-                </ul>
+              {/* Score */}
+              <div className="mb-4">
+                <span className="text-sm font-semibold text-gray-600">
+                  Score:
+                </span>{" "}
+                <span className="text-lg font-bold text-blue-600">
+                  {lineup.scouting_report.overallScore}
+                </span>
               </div>
 
-              <p className="text-gray-700 text-sm line-clamp-4 mb-4">
-                {lineup.scouting_report.overallAnalysis}
+              {/* Strengths & Weaknesses */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-green-700 mb-2">
+                    Strengths
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {lineup.scouting_report.strengths
+                      .slice(0, 3)
+                      .map((s, i) => (
+                        <span
+                          key={i}
+                          className="px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-red-700 mb-2">
+                    Weaknesses
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {lineup.scouting_report.weaknesses
+                      .slice(0, 3)
+                      .map((w, i) => (
+                        <span
+                          key={i}
+                          className="px-2 py-1 rounded-full bg-red-100 text-red-800 text-xs font-medium"
+                        >
+                          {w}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Analysis */}
+              <p className="text-gray-700 text-sm line-clamp-3 mb-4 italic">
+                &ldquo;{lineup.scouting_report.overallAnalysis}&rdquo;
               </p>
 
+              {/* Link */}
               <a
                 href={`/community/player-lineups/${lineup.lineup_id}`}
-                className="inline-block mt-2 text-blue-600 font-semibold hover:text-blue-800 hover:underline transition-colors"
+                className="self-start inline-flex items-center text-blue-600 font-semibold hover:text-blue-800 transition-colors"
               >
-                View Full Analysis →
+                View Full Analysis
+                <span className="ml-1">→</span>
               </a>
             </div>
           ))}

@@ -163,28 +163,39 @@ export default function Poeltl() {
     });
   };
 
-  const compareGuess = (guess: NBAPlayer, target: NBAPlayer) => ({
-    position: guess.position === target.position,
-    height:
-      guess.height === target.height
-        ? "equal"
-        : guess.height > target.height
-        ? "lower"
-        : "higher",
-    weight:
-      guess.weight === target.weight
-        ? "equal"
-        : guess.weight > target.weight
-        ? "lower"
-        : "higher",
-    years_pro:
-      guess.years_pro === target.years_pro
-        ? "equal"
-        : Number(guess.years_pro) > Number(target.years_pro)
-        ? "lower"
-        : "higher",
-    team: guess.team_names.some((t) => target.team_names.includes(t)),
-  });
+  function parseHeight(height: string): number {
+    // expects "6-10" format → 82 inches
+    const [feet, inches] = height.split("-").map(Number);
+    return feet * 12 + inches;
+  }
+
+  const compareGuess = (guess: NBAPlayer, target: NBAPlayer) => {
+    const guessHeight = parseHeight(guess.height);
+    const targetHeight = parseHeight(target.height);
+
+    return {
+      position: guess.position === target.position,
+      height:
+        guessHeight === targetHeight
+          ? "equal"
+          : guessHeight > targetHeight
+          ? "higher"
+          : "lower",
+      weight:
+        Number(guess.weight) === Number(target.weight)
+          ? "equal"
+          : Number(guess.weight) > Number(target.weight)
+          ? "higher"
+          : "lower",
+      years_pro:
+        Number(guess.years_pro) === Number(target.years_pro)
+          ? "equal"
+          : Number(guess.years_pro) > Number(target.years_pro)
+          ? "higher"
+          : "lower",
+      team: guess.team_names.some((t) => target.team_names.includes(t)),
+    };
+  };
 
   if (!checkedAuth) return <p className="p-6">Checking login...</p>;
 

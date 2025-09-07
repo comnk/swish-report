@@ -54,11 +54,27 @@ def get_player_lineup(lineup_id: int):
         if not row:
             raise HTTPException(status_code=404, detail="Lineup not found")
 
-        # Deserialize JSON fields
+        # Deserialize JSON
         if "players" in row and row["players"]:
             row["players"] = json.loads(row["players"])
         if "scouting_report" in row and row["scouting_report"]:
             row["scouting_report"] = json.loads(row["scouting_report"])
+
+        # Replace player IDs with full_name from players table
+        player_ids = [int(pid) for pid in row["players"].values()]
+        if player_ids:
+            format_strings = ",".join(["%s"] * len(player_ids))
+            cursor.execute(
+                f"SELECT player_uid, full_name FROM players WHERE player_uid IN ({format_strings})",
+                tuple(player_ids),
+            )
+            results = cursor.fetchall()
+            id_to_name = {r["player_uid"]: r["full_name"] for r in results}
+
+            row["players"] = {
+                pos: id_to_name.get(int(pid), f"Unknown Player {pid}")
+                for pos, pid in row["players"].items()
+            }
 
         return row
 

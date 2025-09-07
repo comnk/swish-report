@@ -5,7 +5,7 @@ interface Lineup {
   lineup_id: number;
   user_id: number;
   mode: string;
-  players: Record<string, number>;
+  players: Record<string, string>; // <-- now player names, not IDs
   scouting_report: {
     overallScore: number;
     strengths: string[];
@@ -54,13 +54,13 @@ export default async function PlayerLineupPage({ params }: { params: Params }) {
         <section className="bg-white shadow rounded-lg p-6 text-black">
           <h2 className="text-2xl font-semibold mb-4">Players</h2>
           <ul className="grid grid-cols-2 gap-2">
-            {Object.entries(lineup.players).map(([pos, playerId]) => (
+            {Object.entries(lineup.players).map(([pos, playerName]) => (
               <li
                 key={pos}
                 className="flex justify-between bg-gray-50 p-2 rounded"
               >
                 <span className="font-semibold">{pos}</span>
-                <span>{playerId}</span>
+                <span>{playerName}</span>
               </li>
             ))}
           </ul>
@@ -94,26 +94,38 @@ export default async function PlayerLineupPage({ params }: { params: Params }) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+            {/* Strengths */}
             <div>
               <h3 className="text-lg font-semibold mb-2 text-green-600">
                 Strengths
               </h3>
-              <ul className="list-disc ml-5 space-y-1 text-green-700">
+              <div className="space-y-2">
                 {lineup.scouting_report.strengths.map((s, i) => (
-                  <li key={i}>{s}</li>
+                  <div
+                    key={i}
+                    className="bg-green-100 text-green-800 p-3 rounded-lg shadow-sm"
+                  >
+                    {s}
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
 
+            {/* Weaknesses */}
             <div>
               <h3 className="text-lg font-semibold mb-2 text-red-600">
                 Weaknesses
               </h3>
-              <ul className="list-disc ml-5 space-y-1 text-red-700">
+              <div className="space-y-2">
                 {lineup.scouting_report.weaknesses.map((w, i) => (
-                  <li key={i}>{w}</li>
+                  <div
+                    key={i}
+                    className="bg-red-100 text-red-800 p-3 rounded-lg shadow-sm"
+                  >
+                    {w}
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
         </section>
