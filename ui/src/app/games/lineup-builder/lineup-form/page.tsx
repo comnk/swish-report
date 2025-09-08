@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation"; // <-- import router
+import { useRouter } from "next/navigation";
 import Court from "@/components/lineup-builder-court";
 import Navigation from "@/components/navigation";
 
 export default function LineupBuilderForm() {
-  const router = useRouter(); // <-- initialize router
+  const router = useRouter();
   const [mode, setMode] = useState<"starting5" | "rotation">("starting5");
   const [lineup, setLineup] = useState<Record<string, string | null>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,7 +76,6 @@ export default function LineupBuilderForm() {
       const data = await res.json();
       console.log("✅ Submission success:", data);
 
-      // Redirect to the new lineup page
       router.push(`/community/player-lineups/${data.lineup_id}`);
     } catch (err: unknown) {
       console.error(err);

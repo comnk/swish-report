@@ -79,11 +79,9 @@ async def get_lineup_analysis(submission: LineupSubmission):
         if not results:
             raise HTTPException(status_code=404, detail="No players found for lineup")
 
-        # Generate AI analysis
         analysis_json = await create_nba_lineup_analysis(submission.mode, results)
         print(analysis_json)
 
-        # Insert lineup into DB
         insert_sql = """
             INSERT INTO lineups (user_id, mode, players, scouting_report)
             VALUES (%s, %s, %s, %s)

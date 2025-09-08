@@ -47,7 +47,6 @@ export default function Dashboard() {
 
         const data = await res.json();
 
-        // 🔑 Parse scouting_report if it's a string
         const parsedData = data.map((lineup: Lineup) => ({
           ...lineup,
           scouting_report:
