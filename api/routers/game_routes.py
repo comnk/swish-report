@@ -94,7 +94,7 @@ async def get_lineup_analysis(submission: LineupSubmission):
                 user_id,
                 submission.mode,
                 json.dumps(submission.lineup),
-                json.dumps(analysis_json),  # ✅ safe, already dict
+                json.dumps(analysis_json),
             ),
         )
         conn.commit()

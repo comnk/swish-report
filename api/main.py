@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 import os
-from routers import nba_routes, hs_routes, college_routes, game_routes, auth_routes, community_routes
+from routers import nba_routes, hs_routes, college_routes, game_routes, auth_routes, community_routes, user_routes
 
 app = FastAPI(title="swish report")
 
@@ -30,3 +30,4 @@ app.include_router(hs_routes.router, prefix="/high-school", tags=["High School"]
 app.include_router(game_routes.router, prefix="/games", tags=["Games"])
 app.include_router(community_routes.router, prefix="/community", tags=["Community"])
 app.include_router(auth_routes.router, prefix="/auth", tags=["Auth"])
+app.include_router(user_routes.router, prefix="/user",tags=["User"] )
