@@ -1,13 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { AlertCircle, Flame } from "lucide-react";
+import { AlertCircle, Flame, CheckCircle } from "lucide-react";
 import Navigation from "@/components/navigation";
 
 export default function SubmitHotTakePage() {
-  const router = useRouter();
-
   const [formData, setFormData] = useState({
     content: "",
   });
@@ -30,11 +27,22 @@ export default function SubmitHotTakePage() {
     setSubmitStatus("idle");
     setErrorMessage("");
 
+    const token = localStorage.getItem("token");
+    const user_email = localStorage.getItem("user_email");
+
+    if (!token || !user_email) {
+      setIsSubmitting(false);
+      setSubmitStatus("error");
+      setErrorMessage("You must be signed in to submit a hot take.");
+      return;
+    }
+
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/takes`, {
+      const res = await fetch(`http://localhost:8000/games/hot_take`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          user_id: user_email,
           content: formData.content,
         }),
       });
@@ -44,10 +52,8 @@ export default function SubmitHotTakePage() {
         throw new Error(errorData.detail || "Submission failed");
       }
 
-      const data = await res.json();
-
-      // ✅ redirect to the new take detail page (example route)
-      router.push(`/hot-takes/${data.take_id}`);
+      setSubmitStatus("success");
+      setFormData({ content: "" });
     } catch (err: unknown) {
       console.error(err);
 
@@ -67,24 +73,40 @@ export default function SubmitHotTakePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <Navigation />
       <div className="bg-white border-b">
+        {" "}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {" "}
           <div className="text-center">
+            {" "}
             <h1 className="text-3xl font-bold text-gray-900">
-              Submit a Hot Take
-            </h1>
+              {" "}
+              Submit a Hot Take{" "}
+            </h1>{" "}
             <p className="mt-2 text-gray-600 max-w-2xl mx-auto">
+              {" "}
               Share your hottest basketball takes. Our AI will analyze them for
               truthfulness and provide insights, while the community can weigh
-              in too.
-            </p>
-          </div>
-        </div>
+              in too.{" "}
+            </p>{" "}
+          </div>{" "}
+        </div>{" "}
       </div>
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Success Message */}
+        {submitStatus === "success" && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center">
+            <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
+            <div>
+              <h3 className="text-green-800 font-semibold">
+                Hot take submitted successfully!
+              </h3>
+            </div>
+          </div>
+        )}
+
         {/* Error Message */}
         {submitStatus === "error" && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
@@ -105,24 +127,16 @@ export default function SubmitHotTakePage() {
                 Your Hot Take
               </h2>
 
-              <div>
-                <label
-                  htmlFor="content"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Hot Take *
-                </label>
-                <textarea
-                  id="content"
-                  name="content"
-                  value={formData.content}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-black transition-colors"
-                  placeholder="LeBron would average 50 points per game in the 80s..."
-                  rows={5}
-                  required
-                />
-              </div>
+              <textarea
+                id="content"
+                name="content"
+                value={formData.content}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-black transition-colors"
+                placeholder="LeBron would average 50 points per game in the 80s..."
+                rows={5}
+                required
+              />
             </div>
 
             <div className="pt-4">
@@ -140,13 +154,6 @@ export default function SubmitHotTakePage() {
                   "Submit Hot Take"
                 )}
               </button>
-
-              {!isFormValid && (
-                <p className="mt-2 text-sm text-gray-500 flex items-center">
-                  <AlertCircle className="w-4 h-4 mr-1" />
-                  Please enter your hot take
-                </p>
-              )}
             </div>
           </form>
         </div>

@@ -38,13 +38,13 @@ You must evaluate how effective this lineup would be and how well the pieces fit
 Return a valid JSON object ONLY, exactly like this (no comments, no extra text, no markdown, no links):
 
 {
-  "overallScore": integer of the overall score of this lineup,
-  "strengths": ["string", "string"],
-  "weaknesses": ["string", "string"],
-  "synergyNotes": "string",
-  "floor": "string",
-  "ceiling": "string",
-  "overallAnalysis": "string"
+    "overallScore": integer of the overall score of this lineup,
+    "strengths": ["string", "string"],
+    "weaknesses": ["string", "string"],
+    "synergyNotes": "string",
+    "floor": "string",
+    "ceiling": "string",
+    "overallAnalysis": "string"
 }
 
 Rules:
@@ -55,6 +55,31 @@ Rules:
 - Reward spacing, complementary roles, two-way balance.
 - For 10-man rotations, evaluate bench impact, depth, substitutions.
 - In "overallAnalysis", explicitly reference every player by name and explain their fit.
+"""
+
+SYSTEM_PROMPT_HOT_TAKE = """
+You are a basketball analyst that analyzes ONLY high school, college, and NBA basketball related hot takes submitted by users.
+Your role is to evaluate each hot take for its truthfulness and provide a clear,
+concise explanation that users can understand and debate.
+
+Instructions:
+- Always output in JSON format with two fields: "truthfulness_score" and "ai_insight".
+- "truthfulness_score" must be a number from 0 to 100, where:
+    0 = completely false or misleading,
+    50 = uncertain, mixed, or opinion-based,
+    100 = completely true or well-supported by evidence.
+- "ai_insight" should be a short paragraph (2–5 sentences) explaining why you gave that score.
+- Be objective, evidence-based, and neutral in tone.
+- Do not take sides or argue like a human; your job is to provide analysis, not to participate in the debate.
+
+Example Input:
+"LeBron James has never won an MVP award."
+
+Example Output:
+{
+    "truthfulness_score": 10,
+    "ai_insight": "This claim is false. LeBron James has won the NBA Most Valuable Player (MVP) award four times (2009, 2010, 2012, 2013). The statement may reflect an opinion or exaggeration, but factually it is incorrect."
+}
 """
 
 
@@ -83,5 +108,12 @@ def nba_lineup_content(mode, player_info):
         user_content = f"""
         Provide a scouting report for this NBA rotation. Here is the rotation of players (and each of their details) that the user provided: {player_info}
         """
+    
+    return user_content
+
+def hot_take_content(content):
+    user_content = f"""
+    Provide an analysis for this user's hot take: {content}
+    """
     
     return user_content

@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from core.db import get_db_connection
 from scripts.insertion.ai_generation.insert_nba_lineup_analysis import create_nba_lineup_analysis
+from scripts.insertion.ai_generation.insert_hot_take_analysis import create_hot_take_analysis
 from random import randint
 from typing import Dict, Optional, Literal
 
@@ -13,6 +14,10 @@ class LineupSubmission(BaseModel):
     mode: Literal["starting5", "rotation"]
     lineup: Dict[str, Optional[str]]  # positions mapped to player names or null
     user_id: str
+
+class HotTakeSubmission(BaseModel):
+    user_id: str
+    content: str
 
 @router.get("/poeltl/get-player")
 def poeltl_get_daily_player():
@@ -41,14 +46,12 @@ async def get_lineup_analysis(submission: LineupSubmission):
     cursor = conn.cursor(dictionary=True)
 
     try:
-        # Get numeric user_id from email
         cursor.execute("SELECT user_id FROM users WHERE email = %s", (submission.user_id,))
         user_row = cursor.fetchone()
         if not user_row:
             raise HTTPException(status_code=404, detail="User not found")
         user_id = user_row["user_id"]
 
-        # Extract player IDs
         player_ids = list(submission.lineup.values())
         placeholders = ",".join(["%s"] * len(player_ids))
 
@@ -103,6 +106,46 @@ async def get_lineup_analysis(submission: LineupSubmission):
             "lineup_id": lineup_id,
             "scouting_report": analysis_json,
             "players": results,
+        }
+
+    finally:
+        cursor.close()
+        conn.close()
+
+@router.post("/hot_take")
+async def submit_hot_take(submission: HotTakeSubmission):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("SELECT user_id FROM users WHERE email = %s", (submission.user_id,))
+        user_row = cursor.fetchone()
+        if not user_row:
+            raise HTTPException(status_code=404, detail="User not found")
+        user_id = user_row["user_id"]
+
+        analysis_json = await create_hot_take_analysis(submission.content)
+
+        insert_sql = """
+            INSERT INTO hot_takes (user_id, content, truthfulness_score, ai_insight)
+            VALUES (%s, %s, %s, %s)
+        """
+        cursor.execute(
+            insert_sql,
+            (
+                user_id,
+                submission.content,
+                analysis_json["truthfulness_score"],
+                analysis_json["ai_insight"],
+            ),
+        )
+        conn.commit()
+        take_id = cursor.lastrowid
+
+        return {
+            "message": "Hot take submitted successfully",
+            "take_id": take_id,
+            "hot_take_analysis": analysis_json,
         }
 
     finally:
