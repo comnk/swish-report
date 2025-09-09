@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AlertCircle, Flame, CheckCircle } from "lucide-react";
 import Navigation from "@/components/navigation";
 
 export default function SubmitHotTakePage() {
-  const [formData, setFormData] = useState({
-    content: "",
-  });
+  const router = useRouter();
+
+  const [formData, setFormData] = useState({ content: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<
     "idle" | "success" | "error"
@@ -52,17 +53,12 @@ export default function SubmitHotTakePage() {
         throw new Error(errorData.detail || "Submission failed");
       }
 
-      setSubmitStatus("success");
-      setFormData({ content: "" });
+      const data = await res.json();
+      router.push(`/community/hot-takes/${data.take_id}`);
     } catch (err: unknown) {
       console.error(err);
-
-      if (err instanceof Error) {
-        setErrorMessage(err.message);
-      } else {
-        setErrorMessage("An unknown error occurred");
-      }
-
+      if (err instanceof Error) setErrorMessage(err.message);
+      else setErrorMessage("An unknown error occurred");
       setSubmitStatus("error");
     } finally {
       setIsSubmitting(false);
@@ -75,39 +71,19 @@ export default function SubmitHotTakePage() {
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       <div className="bg-white border-b">
-        {" "}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {" "}
-          <div className="text-center">
-            {" "}
-            <h1 className="text-3xl font-bold text-gray-900">
-              {" "}
-              Submit a Hot Take{" "}
-            </h1>{" "}
-            <p className="mt-2 text-gray-600 max-w-2xl mx-auto">
-              {" "}
-              Share your hottest basketball takes. Our AI will analyze them for
-              truthfulness and provide insights, while the community can weigh
-              in too.{" "}
-            </p>{" "}
-          </div>{" "}
-        </div>{" "}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Submit a Hot Take
+          </h1>
+          <p className="mt-2 text-gray-600 max-w-2xl mx-auto">
+            Share your hottest basketball takes. Our AI will analyze them for
+            truthfulness and provide insights, while the community can weigh in
+            too.
+          </p>
+        </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Success Message */}
-        {submitStatus === "success" && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center">
-            <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
-            <div>
-              <h3 className="text-green-800 font-semibold">
-                Hot take submitted successfully!
-              </h3>
-            </div>
-          </div>
-        )}
-
-        {/* Error Message */}
         {submitStatus === "error" && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
             <AlertCircle className="w-5 h-5 text-red-600 mr-3" />
@@ -118,7 +94,6 @@ export default function SubmitHotTakePage() {
           </div>
         )}
 
-        {/* Form */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>

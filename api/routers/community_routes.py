@@ -23,7 +23,6 @@ def get_player_lineups():
         cursor.execute(select_sql)
         rows = cursor.fetchall()
 
-        # Convert JSON fields from string to dict
         for row in rows:
             if isinstance(row.get("players"), str):
                 row["players"] = json.loads(row["players"])
@@ -80,6 +79,80 @@ def get_player_lineup(lineup_id: int):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if "cursor" in locals():
+            cursor.close()
+        if "conn" in locals():
+            conn.close()
+
+@router.get("/hot-takes")
+def get_hot_takes():
+    """
+    Fetch all hot takes with user info attached.
+    """
+    select_sql = """
+        SELECT
+            ht.take_id,
+            ht.content,
+            ht.truthfulness_score,
+            ht.ai_insight,
+            ht.created_at,
+            u.username,
+            u.email
+        FROM hot_takes ht
+        JOIN users u ON ht.user_id = u.user_id
+        ORDER BY ht.created_at DESC;
+    """
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(select_sql)
+        rows = cursor.fetchall()
+
+        return {"hot_takes": rows}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching hot takes: {str(e)}")
+    finally:
+        if "cursor" in locals():
+            cursor.close()
+        if "conn" in locals():
+            conn.close()
+
+
+@router.get("/hot-takes/{take_id}", response_model=Dict)
+def get_hot_take(take_id: int):
+    """
+    Fetch a single hot take by ID, with user info.
+    """
+    select_sql = """
+        SELECT
+            ht.take_id,
+            ht.content,
+            ht.truthfulness_score,
+            ht.ai_insight,
+            ht.created_at,
+            u.username,
+            u.email
+        FROM hot_takes ht
+        JOIN users u ON ht.user_id = u.user_id
+        WHERE ht.take_id = %s;
+    """
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True, buffered=True)
+        cursor.execute(select_sql, (take_id,))
+        row = cursor.fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Hot take not found")
+
+        return row
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching hot take: {str(e)}")
     finally:
         if "cursor" in locals():
             cursor.close()

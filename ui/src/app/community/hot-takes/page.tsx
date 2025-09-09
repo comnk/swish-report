@@ -7,9 +7,10 @@ import Navigation from "@/components/navigation";
 type HotTake = {
   take_id: number;
   content: string;
-  user_id: number;
-  username?: string;
+  username: string;
   created_at: string;
+  truthfulness_score?: number | null;
+  ai_insight?: string | null;
 };
 
 export default function UserHotTakes() {
@@ -20,10 +21,12 @@ export default function UserHotTakes() {
   useEffect(() => {
     const fetchHotTakes = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/takes`);
+        const res = await fetch(`http://localhost:8000/community/hot-takes`);
         if (!res.ok) throw new Error("Failed to fetch hot takes");
+
         const data = await res.json();
-        setHotTakes(data);
+        // data.hot_takes contains the array from backend
+        setHotTakes(data.hot_takes || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -52,29 +55,39 @@ export default function UserHotTakes() {
           </Link>
         </div>
 
-        {/* Loading / Error States */}
+        {/* Loading / Error */}
         {loading && <p className="text-gray-600">Loading hot takes...</p>}
-        {error && hotTakes.length > 0 && (
+        {error && hotTakes.length === 0 && (
           <p className="text-red-600">Error: {error}</p>
         )}
 
         {/* Hot Takes List */}
         <div className="space-y-4">
           {hotTakes.map((take) => (
-            <div
+            <Link
               key={take.take_id}
-              className="bg-white shadow-sm rounded-lg p-4 border border-gray-200"
+              href={`/community/hot-takes/${take.take_id}`}
+              className="block bg-white shadow-sm rounded-lg p-4 border border-gray-200 hover:bg-gray-50 transition-colors"
             >
               <p className="text-gray-900">{take.content}</p>
+
+              {take.truthfulness_score !== null && take.ai_insight && (
+                <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-700 border border-gray-200">
+                  <p>
+                    <strong>AI Truthfulness:</strong>{" "}
+                    {take.truthfulness_score!.toFixed(1)}%
+                  </p>
+                  <p>
+                    <strong>AI Insight:</strong> {take.ai_insight}
+                  </p>
+                </div>
+              )}
+
               <div className="mt-2 text-sm text-gray-500 flex justify-between">
-                <span>
-                  {take.username
-                    ? `@${take.username}`
-                    : `User #${take.user_id}`}
-                </span>
+                <span>@{take.username}</span>
                 <span>{new Date(take.created_at).toLocaleString()}</span>
               </div>
-            </div>
+            </Link>
           ))}
 
           {!loading && hotTakes.length === 0 && (
