@@ -6,7 +6,6 @@ import { NBAPlayer } from "@/types/player";
 import { useEffect, useState } from "react";
 
 function getLocalDateString(): string {
-  // guarantees YYYY-MM-DD in your local timezone
   return new Date().toLocaleDateString("en-CA");
 }
 
@@ -32,7 +31,6 @@ export default function Poeltl() {
     setIsAuthenticated(!!token);
     setCheckedAuth(true);
 
-    // 🔒 Check if user already played today (LOCAL TIME)
     const lastPlayed = localStorage.getItem("poeltl_last_played");
     const today = getLocalDateString();
 
@@ -155,7 +153,6 @@ export default function Poeltl() {
       ) {
         setShowModal(true);
 
-        // ✅ Mark today as played (LOCAL TIME)
         const today = getLocalDateString();
         localStorage.setItem("poeltl_last_played", today);
       }
@@ -164,7 +161,6 @@ export default function Poeltl() {
   };
 
   function parseHeight(height: string): number {
-    // expects "6-10" format → 82 inches
     const [feet, inches] = height.split("-").map(Number);
     return feet * 12 + inches;
   }
@@ -331,12 +327,6 @@ export default function Poeltl() {
                 {targetPlayer.full_name}
               </p>
             </div>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-orange-500 text-white px-6 py-3 rounded-xl text-lg font-semibold hover:bg-orange-600 transition"
-            >
-              Play Again
-            </button>
           </div>
         </div>
       )}

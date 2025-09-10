@@ -64,10 +64,6 @@ CREATE TABLE IF NOT EXISTS nba_player_info (
 ) ENGINE=InnoDB;
 """)
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS nba_teams ()
-""")
-
 # PLAYER STATS: remove duplicate player_id, add PK, unique (player_uid, season_id), InnoDB
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS nba_player_stats (

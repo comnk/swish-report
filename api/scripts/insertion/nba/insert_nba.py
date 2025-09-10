@@ -6,11 +6,7 @@ import asyncio
 
 from core.db import get_db_connection
 from scripts.scraping.fetch_nba_player_info import fetch_nba_players
-from utils.helpers import launch_browser
-
-def normalize_name(name):
-    """Remove accents and special characters, lowercase, strip spaces."""
-    return unidecode(name).strip()
+from utils.helpers import launch_browser, normalize_name
 
 def compute_player_hash(player_tuple):
     """Compute a hash of player info ignoring URL and is_active."""
@@ -107,7 +103,6 @@ async def main():
     cnx = get_db_connection()
     cursor = cnx.cursor()
 
-    # Load existing nba_player_info keyed by (player_uid, draft_year)
     cursor.execute("""
         SELECT player_uid, draft_year, data_hash, last_scraped
         FROM nba_player_info

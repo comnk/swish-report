@@ -129,9 +129,12 @@ export default function FeaturesSection() {
               Join thousands of coaches, scouts, and analysts who trust Swish
               Report for their basketball intelligence needs.
             </p>
-            <button className="bg-white text-orange-600 px-8 py-3 rounded-lg font-semibold hover:bg-orange-50 transition-colors">
-              Start Free Trial
-            </button>
+            <Link
+              href="/signup"
+              className="bg-white text-orange-600 px-8 py-3 rounded-lg font-semibold hover:bg-orange-50 transition-colors"
+            >
+              Sign Up Now
+            </Link>
           </div>
         </div>
       </div>

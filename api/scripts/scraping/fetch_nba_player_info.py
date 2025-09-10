@@ -1,4 +1,6 @@
+from utils.helpers import safe_goto, USER_AGENT
 from datetime import datetime
+
 import hashlib
 import json
 import asyncio
@@ -6,35 +8,6 @@ import string
 import re
 import random
 import traceback
-
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/115.0.0.0 Safari/537.36"
-)
-
-async def safe_goto(browser, page, url, max_retries=3):
-    for attempt in range(max_retries):
-        try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=40000)
-            return page
-        except Exception as e:
-            print(f"⚠️ Navigation failed (attempt {attempt+1}) for {url}: {e}")
-            try:
-                await page.close()
-            except:
-                pass
-
-            # fresh context+page for retry
-            context = await browser.new_context()
-            page = await context.new_page()
-            await page.set_extra_http_headers({"User-Agent": USER_AGENT})
-
-            if attempt == max_retries - 1:
-                raise
-            await asyncio.sleep(5 + random.random() * 5)
-
-    return page
 
 
 def normalize_list(value):
@@ -58,7 +31,7 @@ def compute_player_hash(player_tuple):
     serialized = json.dumps(fields_to_hash, sort_keys=True)
     return hashlib.md5(serialized.encode()).hexdigest()
 
-async def scrape_player(browser, _, data):  # "_" = unused player_page param
+async def scrape_player(browser, _, data):
     player_url = f"https://www.basketball-reference.com{data['link']}"
     page = None
     try:
@@ -214,7 +187,6 @@ async def fetch_nba_players(browser, existing_players=None, batch_size=3, letter
 
         rows_data = [r for r in rows_data if r["link"]]
 
-        # single page for player batches to reduce memory usage
         player_page = await browser.new_page()
         await player_page.set_extra_http_headers({"User-Agent": USER_AGENT})
 
