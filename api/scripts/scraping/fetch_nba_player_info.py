@@ -13,7 +13,7 @@ import traceback
 def normalize_list(value):
     return value if value else []
 
-def compute_player_hash(player_tuple):
+def compute_college_player_hash(player_tuple):
     """Compute a consistent hash of player info, ignoring URL and is_active."""
     fields_to_hash = {
         "full_name": player_tuple[0],
@@ -143,97 +143,97 @@ async def scrape_player(browser, _, data):
             await context.close()
 
 
-async def fetch_nba_players(browser, existing_players=None, batch_size=3, letter_delay_range=(5,10)):
+async def fetch_college_players(browser, existing_players=None, batch_size=3, letter_delay_range=(5,10)):
     if existing_players is None:
         existing_players = {}
 
     players_to_insert = []
-    seen_keys = set()
+    seen_hashes = set()
 
-    # page for scraping letters
     index_page = await browser.new_page()
     await index_page.set_extra_http_headers({"User-Agent": USER_AGENT})
 
     for letter in string.ascii_lowercase:
-        if letter == "x":
-            continue
-
-        url = f"https://www.basketball-reference.com/players/{letter}/"
+        url = f"https://www.sports-reference.com/cbb/players/{letter}-index.html"
         try:
             index_page = await safe_goto(browser, index_page, url)
-            await index_page.wait_for_selector("table#players tbody tr", timeout=20000)
+            p_elements = await index_page.query_selector_all("#content p")
+            print(f"🔍 Found {len(p_elements)} p tags for letter {letter}")
+
+            batch = []
+            for p in p_elements:
+                player_a = await p.query_selector("a")
+                if not player_a:
+                    continue
+
+                player_name = (await player_a.inner_text()).strip()
+                href = await player_a.get_attribute("href")
+                if not href or not player_name or player_name.startswith("_") or not re.match(r"^[A-Za-z]", player_name):
+                    continue
+
+                # Extract years and schools
+                small = await p.query_selector("small.note")
+                years = ""
+                schools = []
+                if small:
+                    raw_small_text = await small.inner_text()
+                    match = re.search(r"\(\d{4}\s*[-–]\s*\d{4}\)", raw_small_text)
+                    if match:
+                        years = match.group(0)
+                    school_links = await small.query_selector_all("a")
+                    for a in school_links:
+                        school_href = await a.get_attribute("href")
+                        if school_href and "/men/" in school_href:
+                            school_name = (await a.inner_text()).strip()
+                            schools.append({"name": school_name, "href": school_href})
+
+                if not schools:
+                    continue
+
+                player_obj = {
+                    "name": player_name,
+                    "href": href,
+                    "years": years,
+                    "schools": schools,
+                    "position": "",
+                    "height": "",
+                    "weight": None,
+                    "awards": []
+                }
+
+                batch.append(player_obj)
+
+                # Process batch when full
+                if len(batch) >= batch_size:
+                    await _process_player_batch(browser, batch, players_to_insert, seen_hashes)
+                    batch = []
+
+            # Process remaining players in batch
+            if batch:
+                await _process_player_batch(browser, batch, players_to_insert, seen_hashes)
+
+            print(f"✅ Found {len(players_to_insert)} men’s players for letter {letter}")
+            await asyncio.sleep(random.uniform(*letter_delay_range))
+
         except Exception as e:
             print(f"⚠️ Failed to load letter {letter}: {e}")
             continue
 
-        rows_data = await index_page.evaluate('''() => {
-            const rows = Array.from(document.querySelectorAll("table#players tbody tr"))
-                        .filter(r => !r.classList.contains("thead"));
-            return rows.map(row => {
-                const playerCell = row.querySelector('th[data-stat="player"] a');
-                return {
-                    name: playerCell?.innerText.trim() || null,
-                    link: playerCell?.getAttribute("href") || null,
-                    yearMin: row.querySelector('td[data-stat="year_min"]')?.innerText.trim() || null,
-                    yearMax: row.querySelector('td[data-stat="year_max"]')?.innerText.trim() || null,
-                    position: row.querySelector('td[data-stat="pos"]')?.innerText.trim() || null,
-                    height: row.querySelector('td[data-stat="height"]')?.innerText.trim() || null,
-                    weight: row.querySelector('td[data-stat="weight"]')?.innerText.trim() || null,
-                    colleges: Array.from(row.querySelectorAll('td[data-stat="colleges"] a'))
-                        .map(a => a.innerText.trim())
-                };
-            });
-        }''')
-
-        rows_data = [r for r in rows_data if r["link"]]
-
-        player_page = await browser.new_page()
-        await player_page.set_extra_http_headers({"User-Agent": USER_AGENT})
-
-        for i in range(0, len(rows_data), batch_size):
-            batch = rows_data[i:i+batch_size]
-
-            for d in batch:
-                try:
-                    player_tuple = await scrape_player(browser, None, d)
-                except Exception as e:
-                    print(f"⚠️ Error scraping {d['name']}: {e}")
-                    continue
-
-                draft_year = player_tuple[10] or (int(player_tuple[3]) if player_tuple[3] else 0)
-                key = (player_tuple[0], draft_year)
-                if key in seen_keys:
-                    continue
-                seen_keys.add(key)
-
-                # --- 🚨 filter
-                yearMax = player_tuple[3] or 0
-                accolades = player_tuple[12] or []
-                if yearMax <= 2006 and not accolades:
-                    continue
-                years_pro = player_tuple[11] or 0
-                is_active = player_tuple[15] or 0
-                if years_pro <= 2 and not is_active:
-                    continue
-
-                player_hash = compute_player_hash(player_tuple)
-                existing = existing_players.get(key)
-                should_update = (
-                    not existing or
-                    existing["hash"] != player_hash or
-                    (datetime.now() - existing.get("last_scraped", datetime.min)).days > 365
-                )
-
-                if should_update:
-                    p = list(player_tuple)
-                    p[10] = draft_year  # normalized
-                    players_to_insert.append(tuple(p))
-                    existing_players[key] = {"hash": player_hash, "last_scraped": datetime.now()}
-
-            await asyncio.sleep(random.uniform(2, 5))  # delay between batches
-
-        await player_page.close()
-        await asyncio.sleep(random.uniform(*letter_delay_range))
-
     await index_page.close()
     return players_to_insert
+
+async def _process_player_batch(browser, batch, players_to_insert, seen_hashes):
+    """Helper to scrape and deduplicate a batch of players."""
+    for player_obj in batch:
+        try:
+            player_obj = await scrape_player(browser, player_obj)
+            player_hash = compute_college_player_hash(player_obj)
+            if player_hash in seen_hashes:
+                continue
+            seen_hashes.add(player_hash)
+            players_to_insert.append(player_obj)
+        except Exception as e:
+            print(f"⚠️ Error scraping {player_obj['name']}: {e}")
+            continue
+    await asyncio.sleep(random.uniform(2, 5))
+

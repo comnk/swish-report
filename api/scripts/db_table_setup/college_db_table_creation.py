@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS college_player_info (
     weight INT,                      -- in pounds
     years VARCHAR(20),               -- e.g. "(2011-2015)"
     schools JSON,                    -- list of schools (name + url)
+    awards JSON,                     -- list of awards
     is_active BOOLEAN DEFAULT TRUE,  -- optional flag
     data_hash VARCHAR(32),           -- hash for deduping
     last_scraped TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
