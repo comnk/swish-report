@@ -246,6 +246,16 @@ export default function Navigation() {
                     >
                       Dashboard
                     </Link>
+                    <Link
+                      href="/manage-profile"
+                      className="text-slate-600 hover:text-orange-600 transition-colors"
+                      onClick={() => {
+                        closeDropdowns();
+                        setIsOpen(false);
+                      }}
+                    >
+                      Manage Profile
+                    </Link>
                     <button
                       onClick={() => {
                         handleLogout();

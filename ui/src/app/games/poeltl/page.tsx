@@ -9,6 +9,120 @@ function getLocalDateString(): string {
   return new Date().toLocaleDateString("en-CA");
 }
 
+function parseHeightToInches(height?: string | number): number {
+  if (height === undefined || height === null) return -1;
+  const s = String(height).trim();
+  if (!s) return -1;
+
+  if (/^\d+\-\d+$/.test(s)) {
+    const [f, i] = s.split("-").map(Number);
+    if (Number.isFinite(f) && Number.isFinite(i)) return f * 12 + i;
+  }
+
+  const ftInMatch = s.match(/(\d+)\s*'\s*(\d+)/);
+  if (ftInMatch) {
+    return Number(ftInMatch[1]) * 12 + Number(ftInMatch[2]);
+  }
+
+  const spaced = s.match(/^(\d+)\s+(\d+)$/);
+  if (spaced) {
+    return Number(spaced[1]) * 12 + Number(spaced[2]);
+  }
+
+  const nums = s.match(/\d+/g);
+  if (nums && nums.length >= 2) {
+    return Number(nums[0]) * 12 + Number(nums[1]);
+  }
+
+  if (/^\d+$/.test(s)) return Number(s);
+
+  return -1;
+}
+
+function parseNumberLike(v?: string | number): number {
+  if (v === undefined || v === null) return NaN;
+  if (typeof v === "number") return v;
+  const s = String(v).trim();
+  if (!s) return NaN;
+  if (/^\d+$/.test(s)) return Number(s);
+  if (s.toLowerCase() === "rookie") return 0;
+  // strip non-digits
+  const cleaned = s.replace(/[^\d.-]/g, "");
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+/** Normalize teams field to string[] */
+function normalizeTeamsField(t: unknown): string[] {
+  if (!t) return [];
+  if (Array.isArray(t)) return t as string[];
+  try {
+    // if it's a JSON string like '["Boston Celtics"]'
+    const parsed = JSON.parse(String(t));
+    if (Array.isArray(parsed)) return parsed.map(String);
+  } catch {
+    // ignore
+  }
+  // fallback: comma-separated string
+  return String(t)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function compareGuess(guess: NBAPlayer, target: NBAPlayer) {
+  const guessH = parseHeightToInches(guess.height);
+  const targetH = parseHeightToInches(target.height);
+
+  const heightDir =
+    guessH === targetH
+      ? "equal"
+      : !Number.isFinite(guessH) || !Number.isFinite(targetH)
+      ? "equal"
+      : guessH < targetH
+      ? "up"
+      : "down";
+
+  const guessW = parseNumberLike(guess.weight);
+  const targetW = parseNumberLike(target.weight);
+  const weightDir =
+    Number.isFinite(guessW) && Number.isFinite(targetW)
+      ? guessW === targetW
+        ? "equal"
+        : guessW < targetW
+        ? "up"
+        : "down"
+      : "equal";
+
+  const guessY = parseNumberLike(guess.years_pro);
+  const targetY = parseNumberLike(target.years_pro);
+  const yearsDir =
+    Number.isFinite(guessY) && Number.isFinite(targetY)
+      ? guessY === targetY
+        ? "equal"
+        : guessY < targetY
+        ? "up"
+        : "down"
+      : "equal";
+
+  const posMatch =
+    (guess.position || "").toLowerCase() ===
+    (target.position || "").toLowerCase();
+
+  const guessTeams = normalizeTeamsField(guess.team_names);
+  const targetTeams = normalizeTeamsField(target.team_names);
+  const matchingTeams = guessTeams.filter((t) => targetTeams.includes(t));
+
+  return {
+    position: posMatch,
+    height: heightDir as "up" | "down" | "equal",
+    weight: weightDir as "up" | "down" | "equal",
+    years_pro: yearsDir as "up" | "down" | "equal",
+    guessTeams,
+    matchingTeams,
+  };
+}
+
 export default function Poeltl() {
   const [loading, setLoading] = useState(true);
   const [players, setPlayers] = useState<NBAPlayer[]>([]);
@@ -19,7 +133,6 @@ export default function Poeltl() {
   const [gameEnded, setGameEnded] = useState(false);
 
   const [alreadyPlayedToday, setAlreadyPlayedToday] = useState(false);
-
   const MAX_GUESSES = 8;
 
   // Authentication states
@@ -33,14 +146,12 @@ export default function Poeltl() {
 
     const lastPlayed = localStorage.getItem("poeltl_last_played");
     const today = getLocalDateString();
-
     if (lastPlayed === today) {
       setAlreadyPlayedToday(true);
       setGameEnded(true);
     }
   }, []);
 
-  // Fetch players and target only if logged in & not already played
   useEffect(() => {
     if (!isAuthenticated) {
       setLoading(false);
@@ -56,35 +167,32 @@ export default function Poeltl() {
         const res = await fetch("http://localhost:8000/nba/players");
         if (!res.ok)
           throw new Error(`Error fetching NBA players: ${res.status}`);
-
         const data = await res.json();
-        const mappedPlayers: NBAPlayer[] = data.map(
-          (p: Record<string, unknown>) => ({
-            id: String(p["player_uid"] ?? ""),
-            full_name: String(p["full_name"] ?? ""),
-            position: String(p["position"] ?? ""),
-            height: String(p["height"] ?? ""),
-            weight: String(p["weight"] ?? ""),
-            team_names: (p["team_names"] as string[]) ?? [],
-            college: p["colleges"]
-              ? (p["colleges"] as string[]).join(", ")
-              : undefined,
-            years_pro: p["years_pro"] ? `${p["years_pro"]}` : "Rookie",
-            draft_year: p["draft_year"] as number | undefined,
-            draft_round: p["draft_round"] as number | undefined,
-            draft_pick: p["draft_pick"] as number | undefined,
-            stats: (p["stats"] as NBAPlayer["stats"]) ?? {
-              points: 0,
-              rebounds: 0,
-              assists: 0,
-              fieldGoalPercentage: 0,
-              threePointPercentage: 0,
-              per: 0,
-              winShares: 0,
-            },
-          })
-        );
-        setPlayers(mappedPlayers);
+        const mapped: NBAPlayer[] = data.map((p: Record<string, unknown>) => ({
+          id: String(p["player_uid"] ?? ""),
+          full_name: String(p["full_name"] ?? ""),
+          position: String(p["position"] ?? ""),
+          height: String(p["height"] ?? ""),
+          weight: String(p["weight"] ?? ""),
+          team_names: (p["team_names"] as string[]) ?? [],
+          college: p["colleges"]
+            ? (p["colleges"] as string[]).join(", ")
+            : undefined,
+          years_pro: p["years_pro"] ? `${p["years_pro"]}` : "Rookie",
+          draft_year: p["draft_year"] as number | undefined,
+          draft_round: p["draft_round"] as number | undefined,
+          draft_pick: p["draft_pick"] as number | undefined,
+          stats: (p["stats"] as NBAPlayer["stats"]) ?? {
+            points: 0,
+            rebounds: 0,
+            assists: 0,
+            fieldGoalPercentage: 0,
+            threePointPercentage: 0,
+            per: 0,
+            winShares: 0,
+          },
+        }));
+        setPlayers(mapped);
       } catch (err) {
         console.error(err);
       }
@@ -97,16 +205,15 @@ export default function Poeltl() {
         );
         if (!res.ok)
           throw new Error(`Error fetching target player: ${res.status}`);
-
         const data = await res.json();
         const target: NBAPlayer = {
           id: "target",
           full_name: data.full_name,
           position: data.position,
           height: data.height,
-          weight: data.weight,
+          weight: String(data.weight ?? ""),
           years_pro: `${data.years_pro}`,
-          team_names: JSON.parse(data.teams || "[]"),
+          team_names: normalizeTeamsField(data.teams ?? data.team_names ?? []),
           college: "",
           draft_year: undefined,
           draft_round: undefined,
@@ -142,55 +249,21 @@ export default function Poeltl() {
     if (!isAuthenticated || alreadyPlayedToday) return;
     if (!targetPlayer || gameEnded) return;
 
-    const guessedPlayer = players.find((p) => p.full_name === playerName);
-    if (!guessedPlayer) return;
+    const guessed = players.find((p) => p.full_name === playerName);
+    if (!guessed) return;
 
     setGuesses((prev) => {
-      const newGuesses = [...prev, guessedPlayer];
+      const newGuesses = [...prev, guessed];
       if (
-        guessedPlayer.full_name === targetPlayer.full_name ||
+        guessed.full_name === targetPlayer.full_name ||
         newGuesses.length >= MAX_GUESSES
       ) {
         setShowModal(true);
-
         const today = getLocalDateString();
         localStorage.setItem("poeltl_last_played", today);
       }
       return newGuesses;
     });
-  };
-
-  function parseHeight(height: string): number {
-    const [feet, inches] = height.split("-").map(Number);
-    return feet * 12 + inches;
-  }
-
-  const compareGuess = (guess: NBAPlayer, target: NBAPlayer) => {
-    const guessHeight = parseHeight(guess.height);
-    const targetHeight = parseHeight(target.height);
-
-    return {
-      position: guess.position === target.position,
-      height:
-        guessHeight === targetHeight
-          ? "equal"
-          : guessHeight > targetHeight
-          ? "higher"
-          : "lower",
-      weight:
-        Number(guess.weight) === Number(target.weight)
-          ? "equal"
-          : Number(guess.weight) > Number(target.weight)
-          ? "higher"
-          : "lower",
-      years_pro:
-        Number(guess.years_pro) === Number(target.years_pro)
-          ? "equal"
-          : Number(guess.years_pro) > Number(target.years_pro)
-          ? "higher"
-          : "lower",
-      team: guess.team_names.some((t) => target.team_names.includes(t)),
-    };
   };
 
   if (!checkedAuth) return <p className="p-6">Checking login...</p>;
@@ -253,9 +326,12 @@ export default function Poeltl() {
                 <tbody>
                   {guesses.map((g, idx) => {
                     const result = compareGuess(g, targetPlayer);
+
                     return (
                       <tr key={idx} className="text-center border-t">
                         <td className="p-2">{g.full_name}</td>
+
+                        {/* position */}
                         <td
                           className={`p-2 ${
                             result.position ? "bg-green-300" : "bg-red-300"
@@ -263,36 +339,61 @@ export default function Poeltl() {
                         >
                           {g.position}
                         </td>
+
+                        {/* height */}
                         <td className="p-2">
                           {g.height}{" "}
-                          {result.height === "higher"
+                          {result.height === "equal"
+                            ? "✅"
+                            : result.height === "up"
                             ? "⬆️"
-                            : result.height === "lower"
-                            ? "⬇️"
-                            : "✅"}
+                            : "⬇️"}
                         </td>
+
+                        {/* weight */}
                         <td className="p-2">
                           {g.weight}{" "}
-                          {result.weight === "higher"
+                          {result.weight === "equal"
+                            ? "✅"
+                            : result.weight === "up"
                             ? "⬆️"
-                            : result.weight === "lower"
-                            ? "⬇️"
-                            : "✅"}
+                            : "⬇️"}
                         </td>
+
+                        {/* years pro */}
                         <td className="p-2">
                           {g.years_pro}{" "}
-                          {result.years_pro === "higher"
+                          {result.years_pro === "equal"
+                            ? "✅"
+                            : result.years_pro === "up"
                             ? "⬆️"
-                            : result.years_pro === "lower"
-                            ? "⬇️"
-                            : "✅"}
+                            : "⬇️"}
                         </td>
-                        <td
-                          className={`p-2 ${
-                            result.team ? "bg-green-300" : "bg-red-300"
-                          }`}
-                        >
-                          {g.team_names.join(", ")}
+
+                        {/* teams as badges, highlight only matching teams */}
+                        <td className="p-2">
+                          <div className="flex flex-wrap justify-center gap-2">
+                            {result.guessTeams.length === 0 ? (
+                              <span className="text-sm text-slate-600">—</span>
+                            ) : (
+                              result.guessTeams.map((team) => {
+                                const isMatch =
+                                  result.matchingTeams.includes(team);
+                                return (
+                                  <span
+                                    key={team}
+                                    className={`text-sm px-2 py-1 rounded-full border ${
+                                      isMatch
+                                        ? "bg-green-100 border-green-400 text-green-800"
+                                        : "bg-slate-100 border-slate-200 text-slate-700"
+                                    }`}
+                                  >
+                                    {team}
+                                  </span>
+                                );
+                              })
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

@@ -1,6 +1,5 @@
 import time
 import json
-import re
 import concurrent.futures
 
 from datetime import datetime

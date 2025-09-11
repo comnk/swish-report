@@ -64,7 +64,7 @@ export default function LineupBuilderForm() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ mode, lineup, user_email: user_email }),
+          body: JSON.stringify({ mode, lineup, email: user_email }),
         }
       );
 

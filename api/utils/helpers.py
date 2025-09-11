@@ -38,17 +38,18 @@ async def launch_browser(headless=True):
 async def safe_goto(browser, page, url, max_retries=3):
     for attempt in range(max_retries):
         try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=40000)
+            await page.goto(url, wait_until="load", timeout=60000)
             return page
         except Exception as e:
             print(f"⚠️ Navigation failed (attempt {attempt+1}) for {url}: {e}")
             try:
+                ctx = page.context
                 await page.close()
+                await ctx.close()
             except:
                 pass
 
-            # fresh context+page for retry
-            context = await browser.new_context()
+            context = await browser.new_context(java_script_enabled=False)
             page = await context.new_page()
             await page.set_extra_http_headers({"User-Agent": USER_AGENT})
 

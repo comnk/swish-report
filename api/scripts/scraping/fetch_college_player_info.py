@@ -7,10 +7,12 @@ import asyncio
 import hashlib
 import json
 
+
 def normalize_list(values):
     if not values:
         return []
     return sorted(values)
+
 
 def compute_college_player_hash(player_obj):
     """Compute a consistent hash of college player info, ignoring hrefs."""
@@ -38,7 +40,8 @@ async def scrape_player(browser, page, data):
     data["awards"] = []
 
     try:
-        await safe_goto(browser, page, player_url)
+        page = await safe_goto(browser, page, player_url)
+
         meta_div = await page.query_selector("#meta")
         if meta_div:
             p_tags = await meta_div.query_selector_all("p")
@@ -83,8 +86,10 @@ async def scrape_player(browser, page, data):
                     if award_text:
                         data["awards"].append(award_text)
 
-        print(f"✅ Parsed player: {data.get('name')} | Pos: {data.get('position')} | "
-            f"Height: {data.get('height')} | Weight: {data.get('weight')} | Awards: {data.get('awards')}")
+        print(
+            f"✅ Parsed player: {data.get('name')} | Pos: {data.get('position')} | "
+            f"Height: {data.get('height')} | Weight: {data.get('weight')} | Awards: {data.get('awards')}"
+        )
 
     except Exception as e:
         print(f"⚠️ Error scraping {player_url}: {e}\n{traceback.format_exc()}")
@@ -92,7 +97,7 @@ async def scrape_player(browser, page, data):
     return data
 
 
-async def fetch_college_players(browser, existing_players=None, batch_size=3, letter_delay_range=(5,10)):
+async def fetch_college_players(browser, existing_players=None, batch_size=3, letter_delay_range=(5, 10)):
     """Fetch all men's college basketball players with batch processing, deduplication, and awards."""
     if existing_players is None:
         existing_players = {}
@@ -106,7 +111,9 @@ async def fetch_college_players(browser, existing_players=None, batch_size=3, le
     for letter in string.ascii_lowercase:
         url = f"https://www.sports-reference.com/cbb/players/{letter}-index.html"
         try:
+            # ✅ FIX: capture returned page
             index_page = await safe_goto(browser, index_page, url)
+
             p_elements = await index_page.query_selector_all("#content p")
             print(f"🔍 Found {len(p_elements)} p tags for letter {letter}")
 
@@ -116,7 +123,7 @@ async def fetch_college_players(browser, existing_players=None, batch_size=3, le
                 if not player_a:
                     continue
 
-                player_name = (await player_a.inner_text()).strip()
+                player_name = (await player_a.inner_text()).strip().replace(".", "")
                 href = await player_a.get_attribute("href")
                 if not href or not player_name or player_name.startswith("_") or not re.match(r"^[A-Za-z]", player_name):
                     continue
@@ -179,7 +186,8 @@ async def fetch_college_players(browser, existing_players=None, batch_size=3, le
                     print(f"⏳ Scraping player: {d['name']}")
                     player_page = await browser.new_page()
                     await player_page.set_extra_http_headers({"User-Agent": USER_AGENT})
-                    player_obj = await scrape_player(player_page, d)
+                    # ✅ FIX: was missing browser arg
+                    player_obj = await scrape_player(browser, player_page, d)
                     await player_page.close()
 
                     if not player_obj:
@@ -204,4 +212,3 @@ async def fetch_college_players(browser, existing_players=None, batch_size=3, le
 
     await index_page.close()
     return players_to_insert
-

@@ -54,7 +54,12 @@ export default function SubmitHotTakePage() {
       }
 
       const data = await res.json();
-      router.push(`/community/hot-takes/${data.take_id}`);
+
+      // show success briefly, then redirect
+      setSubmitStatus("success");
+      setTimeout(() => {
+        router.push(`/community/hot-takes/${data.take_id}`);
+      }, 1200);
     } catch (err: unknown) {
       console.error(err);
       if (err instanceof Error) setErrorMessage(err.message);
@@ -84,6 +89,22 @@ export default function SubmitHotTakePage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Success Alert */}
+        {submitStatus === "success" && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center">
+            <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
+            <div>
+              <h3 className="text-green-800 font-semibold">
+                Hot take submitted successfully!
+              </h3>
+              <p className="text-green-700 text-sm">
+                Redirecting to your hot take...
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Error Alert */}
         {submitStatus === "error" && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
             <AlertCircle className="w-5 h-5 text-red-600 mr-3" />
@@ -94,6 +115,7 @@ export default function SubmitHotTakePage() {
           </div>
         )}
 
+        {/* Form */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>

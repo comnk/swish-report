@@ -4,7 +4,7 @@ from core.db import get_db_connection
 from scripts.insertion.ai_generation.insert_nba_lineup_analysis import create_nba_lineup_analysis
 from scripts.insertion.ai_generation.insert_hot_take_analysis import create_hot_take_analysis
 from random import randint
-from typing import Dict, Optional, Literal
+from typing import Dict, Union, Literal
 
 import json
 
@@ -12,8 +12,8 @@ router = APIRouter()
 
 class LineupSubmission(BaseModel):
     mode: Literal["starting5", "rotation"]
-    lineup: Dict[str, Optional[str]]  # positions mapped to player names or null
-    user_id: str
+    lineup: Dict[str, Union[str, None]]  # positions mapped to player names or null
+    email: str
 
 class HotTakeSubmission(BaseModel):
     user_id: str
@@ -46,7 +46,7 @@ async def get_lineup_analysis(submission: LineupSubmission):
     cursor = conn.cursor(dictionary=True)
 
     try:
-        cursor.execute("SELECT user_id FROM users WHERE email = %s", (submission.user_id,))
+        cursor.execute("SELECT user_id FROM users WHERE email = %s", (submission.email,))
         user_row = cursor.fetchone()
         if not user_row:
             raise HTTPException(status_code=404, detail="User not found")
