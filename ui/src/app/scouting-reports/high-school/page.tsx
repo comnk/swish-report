@@ -58,7 +58,6 @@ export default function HighSchoolPage() {
             aiAnalysis:
               p.aiAnalysis ??
               "A highly talented high school prospect with excellent scoring ability and strong athletic traits.",
-            draftProjection: "Projected late first-round pick",
             weight: "",
           })
         );

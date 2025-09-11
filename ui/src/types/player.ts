@@ -5,13 +5,21 @@ export interface HighSchoolPlayer {
     height: string;
     weight: string;
     school: string;
-    class?: string; // For high school and college
+    class?: string;
     stars: number,
     overallRating: number;
     strengths: string[];
     weaknesses: string[];
     aiAnalysis: string;
-    draftProjection?: string;
+}
+
+export interface CollegePlayer {
+    id: string;
+    full_name: string;
+    position: string;
+    height: string;
+    weight: string;
+    school: string;
 }
 
 export interface NBAPlayer {
