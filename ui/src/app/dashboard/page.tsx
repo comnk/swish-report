@@ -38,7 +38,6 @@ export default function Dashboard() {
       }
 
       try {
-        // Fetch lineups
         const lineupRes = await fetch(
           `http://localhost:8000/user/lineup-builder/${user_email}`,
           {
@@ -63,7 +62,6 @@ export default function Dashboard() {
 
         setLineups(parsedLineups);
 
-        // Fetch hot takes
         const hotTakeRes = await fetch(
           `http://localhost:8000/user/hot-takes/${user_email}`,
           {
@@ -164,21 +162,21 @@ export default function Dashboard() {
                       key={take.take_id}
                       className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between hover:bg-slate-50 transition"
                     >
-                      <div>
-                        <p className="text-gray-900 font-medium">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-gray-900 font-medium break-words line-clamp-3">
                           {take.content}
                         </p>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-gray-600 mt-2">
                           Truthfulness Score:{" "}
                           <span className="font-semibold text-blue-600">
-                            {take.truthfulness_score}
+                            {take.truthfulness_score}%
                           </span>
                         </p>
                       </div>
 
                       <a
                         href={`/community/hot-takes/${take.take_id}`}
-                        className="mt-3 sm:mt-0 inline-block text-blue-600 font-semibold hover:text-blue-800 transition"
+                        className="mt-3 sm:mt-0 sm:ml-4 inline-block shrink-0 text-blue-600 font-semibold hover:text-blue-800 transition"
                       >
                         View →
                       </a>

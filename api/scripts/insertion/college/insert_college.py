@@ -107,7 +107,7 @@ async def insert_college_player_info(cursor, player_uid_map, player_list):
             cursor.execute("""
                 INSERT INTO college_player_info
                 (player_uid, player_url, position, height, weight, years,
-                 schools, awards, is_active, data_hash)
+                schools, awards, is_active, data_hash)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (player_uid, player_url, position, height, weight, years, schools, awards, is_active, data_hash))
 
