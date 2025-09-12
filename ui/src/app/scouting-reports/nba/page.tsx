@@ -64,15 +64,6 @@ export default function NBAPage() {
                 player["aiAnalysis"] ??
                   `AI scouting report for ${player["full_name"] ?? ""}.`
               ),
-              stats: (player["stats"] as NBAPlayer["stats"]) ?? {
-                points: 0,
-                rebounds: 0,
-                assists: 0,
-                fieldGoalPercentage: 0,
-                threePointPercentage: 0,
-                per: 0,
-                winShares: 0,
-              },
             } as NBAPlayer;
           }
         );

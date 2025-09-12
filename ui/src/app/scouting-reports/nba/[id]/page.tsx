@@ -186,7 +186,6 @@ export default async function PlayerPage({ params }: { params: Params }) {
           )}
 
           {/* NBA Season Stats Table */}
-          {/* NBA Season Stats Table */}
           {nbaStats.season_stats.length > 0 && (
             <div className="bg-white rounded-lg shadow-sm p-6 overflow-x-auto text-black">
               <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">
@@ -205,9 +204,10 @@ export default async function PlayerPage({ params }: { params: Params }) {
                     <th>BPG</th>
                     <th>TOPG</th>
                     <th>FPG</th>
-                    <th>PER</th>
-                    <th>USG%</th>
-                    <th>BPM</th>
+                    <th>FG%</th>
+                    <th>3P%</th>
+                    <th>FT%</th>
+                    <th>eFG%</th>
                     <th>TS%</th>
                   </tr>
                 </thead>
@@ -224,9 +224,10 @@ export default async function PlayerPage({ params }: { params: Params }) {
                       <td>{row.BPG}</td>
                       <td>{row.TOPG}</td>
                       <td>{row.FPG}</td>
-                      <td>{row.PER ?? "-"}</td>
-                      <td>{row.USG !== undefined ? row.USG + "%" : "-"}</td>
-                      <td>{row.BPM ?? "-"}</td>
+                      <td>{row.FG !== undefined ? row.FG + "%" : "-"}</td>
+                      <td>{row["3P"] !== undefined ? row["3P"] + "%" : "-"}</td>
+                      <td>{row.FT !== undefined ? row.FT + "%" : "-"}</td>
+                      <td>{row.eFG !== undefined ? row.eFG + "%" : "-"}</td>
                       <td>{row.TS !== undefined ? row.TS + "%" : "-"}</td>
                     </tr>
                   ))}

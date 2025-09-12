@@ -182,15 +182,6 @@ export default function Poeltl() {
           draft_year: p["draft_year"] as number | undefined,
           draft_round: p["draft_round"] as number | undefined,
           draft_pick: p["draft_pick"] as number | undefined,
-          stats: (p["stats"] as NBAPlayer["stats"]) ?? {
-            points: 0,
-            rebounds: 0,
-            assists: 0,
-            fieldGoalPercentage: 0,
-            threePointPercentage: 0,
-            per: 0,
-            winShares: 0,
-          },
         }));
         setPlayers(mapped);
       } catch (err) {
@@ -218,15 +209,6 @@ export default function Poeltl() {
           draft_year: undefined,
           draft_round: undefined,
           draft_pick: undefined,
-          stats: {
-            points: 0,
-            rebounds: 0,
-            assists: 0,
-            fieldGoalPercentage: 0,
-            threePointPercentage: 0,
-            per: 0,
-            winShares: 0,
-          },
           stars: 0,
           strengths: [],
           weaknesses: [],

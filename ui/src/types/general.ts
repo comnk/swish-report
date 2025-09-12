@@ -10,11 +10,11 @@ export type NBAStatRow = {
   TOPG: number;
   FPG: number;
 
-  PER?: number;
-  USG?: number;
-  BPM?: number;
-  TS?: number;
-  WS?: number;
+  TS?: number;   // True Shooting %
+  FG?: number;   // Field Goal %
+  eFG?: number;  // Effective FG %
+  "3P"?: number; // Three Point %
+  FT?: number;   // Free Throw %
 };
 
 export type NBAStatsResponse = {

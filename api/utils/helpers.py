@@ -59,36 +59,37 @@ async def safe_goto(browser, page, url, max_retries=3):
 
 # FUNCTIONS FOR SCOUTING REPORTS
 
-
 def calculate_advanced_stats(GP, stats):
-    """Compute TS%, PER, USG%, BPM (simplified) per season."""
-    FGA = stats.get("FGA", 0)
-    FGM = stats.get("FGM", 0)
-    FTA = stats.get("FTA", 0)
-    FTM = stats.get("FTM", 0)
-    PTS = stats.get("PTS", 0)
-    REB = stats.get("REB", 0)
-    AST = stats.get("AST", 0)
-    STL = stats.get("STL", 0)
-    BLK = stats.get("BLK", 0)
-    TOV = stats.get("TOV", 0)
-    MP = stats.get("MP", 0)
+    """Compute TS%, FG%, eFG%, 3P%, and FT% per season."""
+    # Ensure numeric defaults
+    FGA = stats.get("FGA") or 0
+    FGM = stats.get("FGM") or 0
+    FTA = stats.get("FTA") or 0
+    FTM = stats.get("FTM") or 0
+    PTS = stats.get("PTS") or 0
+    THREES_MADE = stats.get("3PM") or 0
+    THREES_ATT = stats.get("3PA") or 0
 
     # True Shooting %
     TS = round(PTS / (2 * (FGA + 0.44 * FTA)) * 100, 1) if (FGA + 0.44 * FTA) > 0 else 0
 
-    # Simplified PER
-    PER = round((PTS + REB + AST + STL + BLK - (FGA - FGM) - (FTA - FTM) - TOV) / GP, 1) if GP else 0
+    # Field Goal %
+    FG_PCT = round(FGM / FGA * 100, 1) if FGA > 0 else 0
 
-    # Usage Rate (approx)
-    USG = round((FGA + 0.44 * FTA + TOV) / GP, 1) if GP else 0
+    # Effective Field Goal %
+    EFG_PCT = round((FGM + 0.5 * THREES_MADE) / FGA * 100, 1) if FGA > 0 else 0
 
-    # Box Plus/Minus (simplified estimate)
-    BPM = round((PTS + REB + AST + STL + BLK - TOV - FGA) / GP, 1) if GP else 0
+    # Three Point %
+    TP_PCT = round(THREES_MADE / THREES_ATT * 100, 1) if THREES_ATT > 0 else 0
+
+    # Free Throw %
+    FT_PCT = round(FTM / FTA * 100, 1) if FTA > 0 else 0
 
     return {
         "TS": TS,
-        "PER": PER,
-        "USG": USG,
-        "BPM": BPM
+        "FG": FG_PCT,
+        "eFG": EFG_PCT,
+        "3P": TP_PCT,
+        "FT": FT_PCT
     }
+

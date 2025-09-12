@@ -7,16 +7,13 @@ from core.config import set_youtube_key
 from core.db import get_db_connection
 from utils.helpers import calculate_advanced_stats
 
+from nba_api.stats.static import players
 from nba_api.stats.endpoints import playercareerstats
 
 
 def fetch_nba_player_stats(full_name: str):
-    """Fetch season-by-season per-game stats + advanced stats for a player by full_name."""
+    """Fetch season-by-season per-game stats + advanced shooting stats for a player by full_name."""
     try:
-        from nba_api.stats.static import players
-        from nba_api.stats.endpoints import playercareerstats
-        import math
-
         matches = players.find_players_by_full_name(full_name)
         if not matches:
             return None
@@ -47,19 +44,15 @@ def fetch_nba_player_stats(full_name: str):
             TOPG = safe_div(row["TOV"], GP)
             FPG = safe_div(row["PF"], GP)
 
-            # Raw stats for advanced calculations, safely defaulting to 0
+            # Raw stats needed for advanced shooting calculations
             raw_stats = {
                 "PTS": row.get("PTS", 0),
-                "REB": row.get("REB", 0),
-                "AST": row.get("AST", 0),
-                "STL": row.get("STL", 0),
-                "BLK": row.get("BLK", 0),
-                "TOV": row.get("TOV", 0),
                 "FGA": row.get("FGA", 0),
                 "FGM": row.get("FGM", 0),
+                "3PA": row.get("FG3A", 0),
+                "3PM": row.get("FG3M", 0),
                 "FTA": row.get("FTA", 0),
                 "FTM": row.get("FTM", 0),
-                "MP": row.get("MIN", 0),
             }
 
             advanced = calculate_advanced_stats(GP, raw_stats)
@@ -80,13 +73,13 @@ def fetch_nba_player_stats(full_name: str):
                 "BPG": BPG,
                 "TOPG": TOPG,
                 "FPG": FPG,
-                **advanced  # TS%, PER, USG%, BPM
+                **advanced  # TS_pct, FG_pct, eFG_pct, ThreeP_pct, FT_pct
             })
 
         return season_stats if season_stats else None
-
+    
     except Exception as e:
-        print(f"Error fetching NBA stats: {e}")
+        print(f"Error fetching NBA stats for {full_name}: {e}")
         return None
     
 

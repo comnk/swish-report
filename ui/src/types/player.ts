@@ -36,15 +36,6 @@ export interface NBAPlayer {
     draft_pick?: number,
     stars: number,
     overallRating: number;
-    stats?: {
-        points: number;
-        rebounds: number;
-        assists: number;
-        fieldGoalPercentage?: number;
-        threePointPercentage?: number;
-        per?: number; // NBA Player Efficiency Rating
-        winShares?: number; // NBA Win Shares
-    };
     strengths: string[];
     weaknesses: string[];
     aiAnalysis: string;

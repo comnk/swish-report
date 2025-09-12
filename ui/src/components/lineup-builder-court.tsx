@@ -63,15 +63,6 @@ export default function Court({ lineup, setLineup, mode }: CourtProps) {
               p["aiAnalysis"] ??
                 `AI scouting report for ${p["full_name"] ?? ""}.`
             ),
-            stats: (p["stats"] as NBAPlayer["stats"]) ?? {
-              points: 0,
-              rebounds: 0,
-              assists: 0,
-              fieldGoalPercentage: 0,
-              threePointPercentage: 0,
-              per: 0,
-              winShares: 0,
-            },
           })
         );
 
