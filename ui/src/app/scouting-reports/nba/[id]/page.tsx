@@ -10,13 +10,14 @@ import {
   Target,
 } from "lucide-react";
 import Navigation from "@/components/navigation";
+import { NBAStatRow } from "@/types/general";
 
 type Params = Promise<{ id: string }>;
 
 export default async function PlayerPage({ params }: { params: Params }) {
   const { id } = await params;
 
-  // Fetch player info
+  // 🔹 Fetch player info
   const res = await fetch(`http://backend:8000/nba/players/${id}`, {
     cache: "no-store",
   });
@@ -27,14 +28,25 @@ export default async function PlayerPage({ params }: { params: Params }) {
 
   const player: NBAPlayer = await res.json();
 
-  // Fetch videos
+  // 🔹 Fetch highlight videos
   const videoRes = await fetch(`http://backend:8000/nba/players/${id}/videos`, {
     cache: "no-store",
   });
 
   let videos: string[] = [];
   if (videoRes.ok) {
-    videos = await videoRes.json(); // assuming it's an array of YouTube URLs
+    videos = await videoRes.json();
+  }
+
+  // 🔹 Fetch NBA stats (new route)
+  const statsRes = await fetch(`http://backend:8000/nba/players/${id}/stats`, {
+    cache: "no-store",
+  });
+
+  let nbaStats: NBAStatRow[] = [];
+  if (statsRes.ok) {
+    const data = await statsRes.json();
+    nbaStats = data.nba_stats || [];
   }
 
   const getGradeColor = (rating: number) => {
@@ -186,8 +198,53 @@ export default async function PlayerPage({ params }: { params: Params }) {
             </div>
           )}
 
+          {/* 🔹 NBA Career Stats Table */}
+          {nbaStats.length > 0 && (
+            <div className="bg-white rounded-lg shadow-sm p-6 overflow-x-auto text-black">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">
+                NBA Career Stats
+              </h2>
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-medium text-gray-700">
+                      Season
+                    </th>
+                    <th className="px-4 py-2 text-left font-medium text-gray-700">
+                      Team
+                    </th>
+                    <th className="px-4 py-2 text-center font-medium text-gray-700">
+                      GP
+                    </th>
+                    <th className="px-4 py-2 text-center font-medium text-gray-700">
+                      PTS
+                    </th>
+                    <th className="px-4 py-2 text-center font-medium text-gray-700">
+                      REB
+                    </th>
+                    <th className="px-4 py-2 text-center font-medium text-gray-700">
+                      AST
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {nbaStats.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-4 py-2">{row.SEASON_ID}</td>
+                      <td className="px-4 py-2">{row.TEAM_ABBREVIATION}</td>
+                      <td className="px-4 py-2 text-center">{row.GP}</td>
+                      <td className="px-4 py-2 text-center">{row.PTS}</td>
+                      <td className="px-4 py-2 text-center">{row.REB}</td>
+                      <td className="px-4 py-2 text-center">{row.AST}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {/* Stats */}
-          {player.stats && (
+          {/* {player.stats && (
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">
                 Stats
@@ -243,7 +300,7 @@ export default async function PlayerPage({ params }: { params: Params }) {
                 )}
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Strengths & Weaknesses */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1,8 +1,60 @@
-import random
+import random, json
+
 from typing import List
 from rapidfuzz import fuzz
 
 from core.config import set_youtube_key
+from core.db import get_db_connection
+
+import time
+from fastapi import HTTPException
+from nba_api.stats.static import players
+from nba_api.stats.endpoints import playercareerstats
+
+def fetch_nba_player_stats(full_name: str):
+    """
+    Given a player's full name, fetch their NBA career stats using nba_api.
+    Returns: list of dicts (per-season stats).
+    """
+    player_info = players.find_players_by_full_name(full_name)
+    if not player_info:
+        raise HTTPException(status_code=404, detail=f"NBA API could not find player: {full_name}")
+    
+    nba_player_id = player_info[0]["id"]
+
+    time.sleep(0.6)
+    career = playercareerstats.PlayerCareerStats(player_id=nba_player_id)
+    stats_df = career.get_data_frames()[0]
+
+    return stats_df.to_dict(orient="records")
+
+def refresh_player_videos(player_id: int, full_name: str, draft_year: int):
+    """Background task to refresh YouTube videos cache."""
+    upsert_cache_sql = """
+        INSERT INTO player_videos_cache (player_uid, videos_json)
+        VALUES (%s, %s)
+        ON DUPLICATE KEY UPDATE videos_json = VALUES(videos_json)
+    """
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Step 1: Fetch the latest YouTube videos
+        youtube_videos = get_nba_youtube_videos(full_name=full_name, start_year=draft_year)
+
+        # Step 2: Save to cache safely
+        cursor.execute(upsert_cache_sql, (player_id, json.dumps(youtube_videos)))
+        conn.commit()
+
+    except Exception as e:
+        # Optional: log error instead of silently failing
+        print(f"Error refreshing player {player_id} videos: {e}")
+
+    finally:
+        if 'cursor' in locals(): cursor.close()
+        if 'conn' in locals(): conn.close()
+
 
 def get_nba_youtube_videos(
     full_name: str,

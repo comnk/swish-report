@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict
 
 from core.db import get_db_connection
-from utils.nba_helpers import get_nba_youtube_videos
+from utils.nba_helpers import get_nba_youtube_videos, refresh_player_videos, fetch_nba_player_stats
 from utils.helpers import parse_json_list
 from scripts.insertion.nba.insert_missing_nba_player import insert_nba_player, create_nba_player_analysis
 
@@ -145,6 +145,42 @@ def get_nba_player(player_id: int):
             conn.close()
 
 
+@router.get("/players/{player_id}/stats")
+def get_nba_player_stats(player_id: int):
+    select_sql = "SELECT full_name FROM players WHERE player_uid = %s"
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute(select_sql, (player_id,))
+        row = cursor.fetchone()
+
+        if not row or not row["full_name"]:
+            raise HTTPException(status_code=404, detail="Player not found")
+
+        full_name = row["full_name"].replace(".", "").strip()
+
+        # 🔹 Use helper
+        stats = fetch_nba_player_stats(full_name)
+
+        return {
+            "player_id": player_id,
+            "full_name": full_name,
+            "nba_stats": stats
+        }
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching player stats: {str(e)}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+            
+
 @router.get("/players/{player_id}/videos")
 def get_nba_player_videos(player_id: int, background_tasks: BackgroundTasks):
     select_sql = "SELECT full_name, draft_year FROM players WHERE player_uid = %s"
@@ -202,33 +238,6 @@ def get_nba_player_videos(player_id: int, background_tasks: BackgroundTasks):
         if 'cursor' in locals(): cursor.close()
         if 'conn' in locals(): conn.close()
 
-
-def refresh_player_videos(player_id: int, full_name: str, draft_year: int):
-    """Background task to refresh YouTube videos cache."""
-    upsert_cache_sql = """
-        INSERT INTO player_videos_cache (player_uid, videos_json)
-        VALUES (%s, %s)
-        ON DUPLICATE KEY UPDATE videos_json = VALUES(videos_json)
-    """
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # Step 1: Fetch the latest YouTube videos
-        youtube_videos = get_nba_youtube_videos(full_name=full_name, start_year=draft_year)
-
-        # Step 2: Save to cache safely
-        cursor.execute(upsert_cache_sql, (player_id, json.dumps(youtube_videos)))
-        conn.commit()
-
-    except Exception as e:
-        # Optional: log error instead of silently failing
-        print(f"Error refreshing player {player_id} videos: {e}")
-
-    finally:
-        if 'cursor' in locals(): cursor.close()
-        if 'conn' in locals(): conn.close()
 
 @router.post("/players/submit-player", response_model=Dict)
 async def submit_high_school_player(submission: PlayerSubmission):
