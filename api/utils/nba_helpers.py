@@ -1,4 +1,4 @@
-import random, json
+import random, json, math
 
 from typing import List
 from rapidfuzz import fuzz
@@ -6,27 +6,54 @@ from rapidfuzz import fuzz
 from core.config import set_youtube_key
 from core.db import get_db_connection
 
-import time
-from fastapi import HTTPException
-from nba_api.stats.static import players
 from nba_api.stats.endpoints import playercareerstats
 
+
 def fetch_nba_player_stats(full_name: str):
-    """
-    Given a player's full name, fetch their NBA career stats using nba_api.
-    Returns: list of dicts (per-season stats).
-    """
-    player_info = players.find_players_by_full_name(full_name)
-    if not player_info:
-        raise HTTPException(status_code=404, detail=f"NBA API could not find player: {full_name}")
+    """Fetch season-by-season per-game stats for a player by full_name (exclude 'TOT' and handle zero GP)."""
+    try:
+        from nba_api.stats.static import players
+
+        matches = players.find_players_by_full_name(full_name)
+        if not matches:
+            return None
+        nba_id = matches[0]["id"]
+
+        career = playercareerstats.PlayerCareerStats(player_id=nba_id)
+        df = career.get_data_frames()[0]
+
+        if df.empty:
+            return None
+
+        season_stats = []
+        for _, row in df.iterrows():
+            if row["TEAM_ABBREVIATION"] == "TOT" or row["GP"] == 0:
+                continue
+
+            def safe_div(numerator, denominator):
+                if denominator == 0 or numerator is None or math.isnan(numerator):
+                    return 0
+                return round(numerator / denominator, 1)
+
+            season_stats.append({
+                "Season": row["SEASON_ID"],
+                "Team": row["TEAM_ABBREVIATION"],
+                "GP": int(row["GP"]),
+                "PPG": safe_div(row["PTS"], row["GP"]),
+                "RPG": safe_div(row["REB"], row["GP"]),
+                "APG": safe_div(row["AST"], row["GP"]),
+                "SPG": safe_div(row["STL"], row["GP"]),
+                "BPG": safe_div(row["BLK"], row["GP"]),
+                "TOPG": safe_div(row["TOV"], row["GP"]),
+                "FPG": safe_div(row["PF"], row["GP"]),
+            })
+
+        return season_stats if season_stats else None
+
+    except Exception as e:
+        print(f"Error fetching NBA stats: {e}")
+        return None
     
-    nba_player_id = player_info[0]["id"]
-
-    time.sleep(0.6)
-    career = playercareerstats.PlayerCareerStats(player_id=nba_player_id)
-    stats_df = career.get_data_frames()[0]
-
-    return stats_df.to_dict(orient="records")
 
 def refresh_player_videos(player_id: int, full_name: str, draft_year: int):
     """Background task to refresh YouTube videos cache."""

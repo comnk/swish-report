@@ -1,9 +1,16 @@
 export type NBAStatRow = {
-  SEASON_ID: string;
-  TEAM_ID: number;
-  TEAM_ABBREVIATION: string;
+  Season: string;
+  Team: string;
   GP: number;
-  PTS: number;
-  REB: number;
-  AST: number;
+  PPG: number;
+  RPG: number;
+  APG: number;
+  SPG: number;
+  BPG: number;
+  TOPG: number;
+  FPG: number;
+};
+
+export type NBAStatsResponse = {
+  season_stats?: NBAStatRow[];
 };

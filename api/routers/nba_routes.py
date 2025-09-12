@@ -155,25 +155,21 @@ def get_nba_player_stats(player_id: int):
 
         cursor.execute(select_sql, (player_id,))
         row = cursor.fetchone()
-
-        if not row or not row["full_name"]:
+        if not row:
             raise HTTPException(status_code=404, detail="Player not found")
 
-        full_name = row["full_name"].replace(".", "").strip()
+        full_name = row["full_name"].strip()
+        season_stats = fetch_nba_player_stats(full_name)
 
-        # 🔹 Use helper
-        stats = fetch_nba_player_stats(full_name)
+        if season_stats is None:
+            raise HTTPException(status_code=404, detail="NBA stats not found")
 
-        return {
-            "player_id": player_id,
-            "full_name": full_name,
-            "nba_stats": stats
-        }
+        return {"player_id": player_id, "full_name": full_name, "season_stats": season_stats}
 
-    except HTTPException as e:
-        raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching player stats: {str(e)}")
+        print(f"DB/Stats Error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
     finally:
         if cursor:
             cursor.close()

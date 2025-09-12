@@ -10,7 +10,7 @@ import {
   Target,
 } from "lucide-react";
 import Navigation from "@/components/navigation";
-import { NBAStatRow } from "@/types/general";
+import { NBAStatsResponse } from "@/types/general";
 
 type Params = Promise<{ id: string }>;
 
@@ -43,10 +43,10 @@ export default async function PlayerPage({ params }: { params: Params }) {
     cache: "no-store",
   });
 
-  let nbaStats: NBAStatRow[] = [];
+  let nbaStats: NBAStatsResponse = {};
   if (statsRes.ok) {
     const data = await statsRes.json();
-    nbaStats = data.nba_stats || [];
+    nbaStats = data ?? {};
   }
 
   const getGradeColor = (rating: number) => {
@@ -199,49 +199,46 @@ export default async function PlayerPage({ params }: { params: Params }) {
           )}
 
           {/* 🔹 NBA Career Stats Table */}
-          {nbaStats.length > 0 && (
+          {/* 🔹 NBA Season Stats Table */}
+          {nbaStats.season_stats?.length ? (
             <div className="bg-white rounded-lg shadow-sm p-6 overflow-x-auto text-black">
               <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">
-                NBA Career Stats
+                NBA Season Stats
               </h2>
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <table className="min-w-full divide-y divide-gray-200 text-sm text-center">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">
-                      Season
-                    </th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">
-                      Team
-                    </th>
-                    <th className="px-4 py-2 text-center font-medium text-gray-700">
-                      GP
-                    </th>
-                    <th className="px-4 py-2 text-center font-medium text-gray-700">
-                      PTS
-                    </th>
-                    <th className="px-4 py-2 text-center font-medium text-gray-700">
-                      REB
-                    </th>
-                    <th className="px-4 py-2 text-center font-medium text-gray-700">
-                      AST
-                    </th>
+                    <th>Season</th>
+                    <th>Team</th>
+                    <th>GP</th>
+                    <th>PPG</th>
+                    <th>RPG</th>
+                    <th>APG</th>
+                    <th>SPG</th>
+                    <th>BPG</th>
+                    <th>TOPG</th>
+                    <th>FPG</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {nbaStats.map((row, idx) => (
+                <tbody>
+                  {nbaStats.season_stats.map((row, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-4 py-2">{row.SEASON_ID}</td>
-                      <td className="px-4 py-2">{row.TEAM_ABBREVIATION}</td>
-                      <td className="px-4 py-2 text-center">{row.GP}</td>
-                      <td className="px-4 py-2 text-center">{row.PTS}</td>
-                      <td className="px-4 py-2 text-center">{row.REB}</td>
-                      <td className="px-4 py-2 text-center">{row.AST}</td>
+                      <td>{row.Season}</td>
+                      <td>{row.Team}</td>
+                      <td>{row.GP}</td>
+                      <td>{row.PPG}</td>
+                      <td>{row.RPG}</td>
+                      <td>{row.APG}</td>
+                      <td>{row.SPG}</td>
+                      <td>{row.BPG}</td>
+                      <td>{row.TOPG}</td>
+                      <td>{row.FPG}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
+          ) : null}
 
           {/* Stats */}
           {/* {player.stats && (
