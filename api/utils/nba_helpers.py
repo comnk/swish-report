@@ -11,17 +11,26 @@ from nba_api.stats.static import players
 from nba_api.stats.endpoints import playercareerstats
 
 
-def fetch_nba_player_stats(full_name: str):
-    """Fetch season-by-season per-game stats + advanced shooting stats for a player by full_name."""
+def fetch_nba_player_stats(full_name: str, is_active: bool = True):
+    """Fetch season-by-season stats for a player by full_name, prioritizing active status."""
     try:
-        matches = players.find_players_by_full_name(full_name)
+        all_players = players.get_players()
+        matches = [p for p in all_players if p['full_name'] == full_name]
+
         if not matches:
             return None
-        nba_id = matches[0]["id"]
+
+        # Prioritize active players
+        if is_active:
+            active_matches = [p for p in matches if p.get('is_active')]
+            player = active_matches[0] if active_matches else matches[0]
+        else:
+            player = matches[0]
+
+        nba_id = player['id']
 
         career = playercareerstats.PlayerCareerStats(player_id=nba_id)
         df = career.get_data_frames()[0]
-
         if df.empty:
             return None
 
@@ -44,7 +53,6 @@ def fetch_nba_player_stats(full_name: str):
             TOPG = safe_div(row["TOV"], GP)
             FPG = safe_div(row["PF"], GP)
 
-            # Raw stats needed for advanced shooting calculations
             raw_stats = {
                 "PTS": row.get("PTS", 0),
                 "FGA": row.get("FGA", 0),
@@ -56,8 +64,6 @@ def fetch_nba_player_stats(full_name: str):
             }
 
             advanced = calculate_advanced_stats(GP, raw_stats)
-
-            # JSON-safe rounding
             for k, v in advanced.items():
                 if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
                     advanced[k] = 0
@@ -73,11 +79,11 @@ def fetch_nba_player_stats(full_name: str):
                 "BPG": BPG,
                 "TOPG": TOPG,
                 "FPG": FPG,
-                **advanced  # TS_pct, FG_pct, eFG_pct, ThreeP_pct, FT_pct
+                **advanced
             })
 
         return season_stats if season_stats else None
-    
+
     except Exception as e:
         print(f"Error fetching NBA stats for {full_name}: {e}")
         return None
@@ -188,3 +194,13 @@ def get_nba_youtube_videos(
             break
 
     return selected_videos
+
+# HELPERS
+
+def handle_name(full_name: str):
+    if (full_name == "Ron Holland"):
+        full_name = "Ronald Holland"
+    elif (full_name == "Brandon Boston Jr."):
+        full_name = full_name.replace(" Jr.", "")
+    
+    return full_name

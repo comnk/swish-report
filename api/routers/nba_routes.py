@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict
 
 from core.db import get_db_connection
-from utils.nba_helpers import get_nba_youtube_videos, refresh_player_videos, fetch_nba_player_stats
+from utils.nba_helpers import get_nba_youtube_videos, refresh_player_videos, fetch_nba_player_stats, handle_name
 from utils.helpers import parse_json_list
 from scripts.insertion.nba.insert_missing_nba_player import insert_nba_player, create_nba_player_analysis
 
@@ -147,9 +147,14 @@ def get_nba_player(player_id: int):
 
 @router.get("/players/{player_id}/stats")
 def get_nba_player_stats(player_id: int):
-    select_sql = "SELECT full_name FROM players WHERE player_uid = %s"
+    select_sql = """
+    SELECT p.full_name, nba.is_active
+    FROM players AS p
+    INNER JOIN nba_player_info AS nba ON p.player_uid = nba.player_uid
+    WHERE p.player_uid = %s
+    """
     conn = cursor = None
-
+    
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -159,11 +164,13 @@ def get_nba_player_stats(player_id: int):
             raise HTTPException(status_code=404, detail="Player not found")
 
         full_name = row["full_name"].strip()
-        season_stats = fetch_nba_player_stats(full_name)
+        is_active = row.get("is_active", True)  # default to True if missing
+        
+        season_stats = fetch_nba_player_stats(full_name, is_active=is_active)
         if not season_stats:
             raise HTTPException(status_code=404, detail="NBA stats not found")
 
-        # Ensure all float values are JSON-safe
+        # JSON-safe float values
         for season in season_stats:
             for key, value in season.items():
                 if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
