@@ -5,14 +5,17 @@ from rapidfuzz import fuzz
 
 from core.config import set_youtube_key
 from core.db import get_db_connection
+from utils.helpers import calculate_advanced_stats
 
 from nba_api.stats.endpoints import playercareerstats
 
 
 def fetch_nba_player_stats(full_name: str):
-    """Fetch season-by-season per-game stats for a player by full_name (exclude 'TOT' and handle zero GP)."""
+    """Fetch season-by-season per-game stats + advanced stats for a player by full_name."""
     try:
         from nba_api.stats.static import players
+        from nba_api.stats.endpoints import playercareerstats
+        import math
 
         matches = players.find_players_by_full_name(full_name)
         if not matches:
@@ -31,21 +34,53 @@ def fetch_nba_player_stats(full_name: str):
                 continue
 
             def safe_div(numerator, denominator):
-                if denominator == 0 or numerator is None or math.isnan(numerator):
+                if denominator == 0 or numerator is None or (isinstance(numerator, float) and math.isnan(numerator)):
                     return 0
                 return round(numerator / denominator, 1)
+
+            GP = int(row["GP"])
+            PPG = safe_div(row["PTS"], GP)
+            RPG = safe_div(row["REB"], GP)
+            APG = safe_div(row["AST"], GP)
+            SPG = safe_div(row["STL"], GP)
+            BPG = safe_div(row["BLK"], GP)
+            TOPG = safe_div(row["TOV"], GP)
+            FPG = safe_div(row["PF"], GP)
+
+            # Raw stats for advanced calculations, safely defaulting to 0
+            raw_stats = {
+                "PTS": row.get("PTS", 0),
+                "REB": row.get("REB", 0),
+                "AST": row.get("AST", 0),
+                "STL": row.get("STL", 0),
+                "BLK": row.get("BLK", 0),
+                "TOV": row.get("TOV", 0),
+                "FGA": row.get("FGA", 0),
+                "FGM": row.get("FGM", 0),
+                "FTA": row.get("FTA", 0),
+                "FTM": row.get("FTM", 0),
+                "MP": row.get("MIN", 0),
+            }
+
+            advanced = calculate_advanced_stats(GP, raw_stats)
+
+            # JSON-safe rounding
+            for k, v in advanced.items():
+                if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                    advanced[k] = 0
 
             season_stats.append({
                 "Season": row["SEASON_ID"],
                 "Team": row["TEAM_ABBREVIATION"],
-                "GP": int(row["GP"]),
-                "PPG": safe_div(row["PTS"], row["GP"]),
-                "RPG": safe_div(row["REB"], row["GP"]),
-                "APG": safe_div(row["AST"], row["GP"]),
-                "SPG": safe_div(row["STL"], row["GP"]),
-                "BPG": safe_div(row["BLK"], row["GP"]),
-                "TOPG": safe_div(row["TOV"], row["GP"]),
-                "FPG": safe_div(row["PF"], row["GP"]),
+                "GP": GP,
+                "PPG": PPG,
+                "RPG": RPG,
+                "APG": APG,
+                "SPG": SPG,
+                "BPG": BPG,
+                "TOPG": TOPG,
+                "FPG": FPG,
+                **advanced  # TS%, PER, USG%, BPM
             })
 
         return season_stats if season_stats else None

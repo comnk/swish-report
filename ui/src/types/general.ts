@@ -9,8 +9,14 @@ export type NBAStatRow = {
   BPG: number;
   TOPG: number;
   FPG: number;
+
+  PER?: number;
+  USG?: number;
+  BPM?: number;
+  TS?: number;
+  WS?: number;
 };
 
 export type NBAStatsResponse = {
-  season_stats?: NBAStatRow[];
+  season_stats: NBAStatRow[];
 };

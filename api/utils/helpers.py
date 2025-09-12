@@ -1,9 +1,7 @@
 from playwright.async_api import async_playwright
 from unidecode import unidecode
 
-import json
-import random
-import asyncio
+import json, random, asyncio
 
 # VARIABLES
 
@@ -58,3 +56,39 @@ async def safe_goto(browser, page, url, max_retries=3):
             await asyncio.sleep(5 + random.random() * 5)
 
     return page
+
+# FUNCTIONS FOR SCOUTING REPORTS
+
+
+def calculate_advanced_stats(GP, stats):
+    """Compute TS%, PER, USG%, BPM (simplified) per season."""
+    FGA = stats.get("FGA", 0)
+    FGM = stats.get("FGM", 0)
+    FTA = stats.get("FTA", 0)
+    FTM = stats.get("FTM", 0)
+    PTS = stats.get("PTS", 0)
+    REB = stats.get("REB", 0)
+    AST = stats.get("AST", 0)
+    STL = stats.get("STL", 0)
+    BLK = stats.get("BLK", 0)
+    TOV = stats.get("TOV", 0)
+    MP = stats.get("MP", 0)
+
+    # True Shooting %
+    TS = round(PTS / (2 * (FGA + 0.44 * FTA)) * 100, 1) if (FGA + 0.44 * FTA) > 0 else 0
+
+    # Simplified PER
+    PER = round((PTS + REB + AST + STL + BLK - (FGA - FGM) - (FTA - FTM) - TOV) / GP, 1) if GP else 0
+
+    # Usage Rate (approx)
+    USG = round((FGA + 0.44 * FTA + TOV) / GP, 1) if GP else 0
+
+    # Box Plus/Minus (simplified estimate)
+    BPM = round((PTS + REB + AST + STL + BLK - TOV - FGA) / GP, 1) if GP else 0
+
+    return {
+        "TS": TS,
+        "PER": PER,
+        "USG": USG,
+        "BPM": BPM
+    }

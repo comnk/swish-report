@@ -1,4 +1,5 @@
 import { NBAPlayer } from "@/types/player";
+import { NBAStatsResponse } from "@/types/general";
 import { notFound } from "next/navigation";
 import {
   Calendar,
@@ -10,7 +11,6 @@ import {
   Target,
 } from "lucide-react";
 import Navigation from "@/components/navigation";
-import { NBAStatsResponse } from "@/types/general";
 
 type Params = Promise<{ id: string }>;
 
@@ -22,39 +22,29 @@ export default async function PlayerPage({ params }: { params: Params }) {
     cache: "no-store",
   });
 
-  if (!res.ok) {
-    notFound();
-  }
-
+  if (!res.ok) notFound();
   const player: NBAPlayer = await res.json();
 
   // 🔹 Fetch highlight videos
   const videoRes = await fetch(`http://backend:8000/nba/players/${id}/videos`, {
     cache: "no-store",
   });
+  const videos: string[] = videoRes.ok ? await videoRes.json() : [];
 
-  let videos: string[] = [];
-  if (videoRes.ok) {
-    videos = await videoRes.json();
-  }
-
-  // 🔹 Fetch NBA stats (new route)
+  // 🔹 Fetch NBA stats
   const statsRes = await fetch(`http://backend:8000/nba/players/${id}/stats`, {
     cache: "no-store",
   });
-
-  let nbaStats: NBAStatsResponse = {};
-  if (statsRes.ok) {
-    const data = await statsRes.json();
-    nbaStats = data ?? {};
-  }
+  const nbaStats: NBAStatsResponse = statsRes.ok
+    ? await statsRes.json()
+    : { season_stats: [] };
 
   const getGradeColor = (rating: number) => {
-    if (rating >= 93) return "text-green-600 bg-green-50"; // A+
-    if (rating >= 90) return "text-green-500 bg-green-50"; // A-
-    if (rating >= 80) return "text-yellow-600 bg-yellow-50"; // B
-    if (rating >= 70) return "text-orange-600 bg-orange-50"; // C
-    return "text-red-600 bg-red-50"; // below 70
+    if (rating >= 93) return "text-green-600 bg-green-50";
+    if (rating >= 90) return "text-green-500 bg-green-50";
+    if (rating >= 80) return "text-yellow-600 bg-yellow-50";
+    if (rating >= 70) return "text-orange-600 bg-orange-50";
+    return "text-red-600 bg-red-50";
   };
 
   return (
@@ -63,12 +53,12 @@ export default async function PlayerPage({ params }: { params: Params }) {
       <div className="bg-white border-b">
         <Navigation />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Left: Avatar + Name + Teams/Draft */}
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-            {/* Left: Avatar + Name + Teams/Draft */}
             <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6 w-full lg:w-auto">
               {/* Avatar */}
               <div className="flex-shrink-0 w-24 h-24 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                {player?.full_name
+                {player.full_name
                   ? player.full_name
                       .split(" ")
                       .map((n) => n[0])
@@ -82,8 +72,7 @@ export default async function PlayerPage({ params }: { params: Params }) {
                   {player.full_name}
                 </h1>
                 <div className="flex flex-wrap mt-2 gap-2">
-                  {/* Teams */}
-                  {player.team_names && player.team_names.length > 0 ? (
+                  {player.team_names?.length ? (
                     player.team_names.map((team, idx) => (
                       <span
                         key={idx}
@@ -98,7 +87,6 @@ export default async function PlayerPage({ params }: { params: Params }) {
                     </span>
                   )}
 
-                  {/* Draft Year */}
                   {player.draft_year && (
                     <span className="flex items-center bg-gray-100 text-gray-900 font-medium text-sm px-3 py-1 rounded-full">
                       <Calendar className="w-4 h-4 mr-1" />
@@ -188,19 +176,18 @@ export default async function PlayerPage({ params }: { params: Params }) {
                       src={url.replace("watch?v=", "embed/")}
                       title={`Highlight Video ${idx + 1}`}
                       className="w-full h-full rounded-lg"
-                      frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
-                    ></iframe>
+                    />
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* 🔹 NBA Career Stats Table */}
-          {/* 🔹 NBA Season Stats Table */}
-          {nbaStats.season_stats?.length ? (
+          {/* NBA Season Stats Table */}
+          {/* NBA Season Stats Table */}
+          {nbaStats.season_stats.length > 0 && (
             <div className="bg-white rounded-lg shadow-sm p-6 overflow-x-auto text-black">
               <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">
                 NBA Season Stats
@@ -218,6 +205,10 @@ export default async function PlayerPage({ params }: { params: Params }) {
                     <th>BPG</th>
                     <th>TOPG</th>
                     <th>FPG</th>
+                    <th>PER</th>
+                    <th>USG%</th>
+                    <th>BPM</th>
+                    <th>TS%</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -233,71 +224,16 @@ export default async function PlayerPage({ params }: { params: Params }) {
                       <td>{row.BPG}</td>
                       <td>{row.TOPG}</td>
                       <td>{row.FPG}</td>
+                      <td>{row.PER ?? "-"}</td>
+                      <td>{row.USG !== undefined ? row.USG + "%" : "-"}</td>
+                      <td>{row.BPM ?? "-"}</td>
+                      <td>{row.TS !== undefined ? row.TS + "%" : "-"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          ) : null}
-
-          {/* Stats */}
-          {/* {player.stats && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">
-                Stats
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-bold">
-                    {player.stats.points}
-                  </div>
-                  <div className="text-gray-600">Points</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">
-                    {player.stats.rebounds}
-                  </div>
-                  <div className="text-gray-600">Rebounds</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">
-                    {player.stats.assists}
-                  </div>
-                  <div className="text-gray-600">Assists</div>
-                </div>
-                {player.stats.fieldGoalPercentage && (
-                  <div>
-                    <div className="text-2xl font-bold">
-                      {player.stats.fieldGoalPercentage}%
-                    </div>
-                    <div className="text-gray-600">FG%</div>
-                  </div>
-                )}
-                {player.stats.threePointPercentage && (
-                  <div>
-                    <div className="text-2xl font-bold">
-                      {player.stats.threePointPercentage}%
-                    </div>
-                    <div className="text-gray-600">3P%</div>
-                  </div>
-                )}
-                {player.stats.per && (
-                  <div>
-                    <div className="text-2xl font-bold">{player.stats.per}</div>
-                    <div className="text-gray-600">PER</div>
-                  </div>
-                )}
-                {player.stats.winShares && (
-                  <div>
-                    <div className="text-2xl font-bold">
-                      {player.stats.winShares}
-                    </div>
-                    <div className="text-gray-600">Win Shares</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )} */}
+          )}
 
           {/* Strengths & Weaknesses */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1,4 +1,4 @@
-import json
+import json, math
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from datetime import datetime, timedelta
@@ -148,11 +148,11 @@ def get_nba_player(player_id: int):
 @router.get("/players/{player_id}/stats")
 def get_nba_player_stats(player_id: int):
     select_sql = "SELECT full_name FROM players WHERE player_uid = %s"
+    conn = cursor = None
 
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-
         cursor.execute(select_sql, (player_id,))
         row = cursor.fetchone()
         if not row:
@@ -160,11 +160,20 @@ def get_nba_player_stats(player_id: int):
 
         full_name = row["full_name"].strip()
         season_stats = fetch_nba_player_stats(full_name)
-
-        if season_stats is None:
+        if not season_stats:
             raise HTTPException(status_code=404, detail="NBA stats not found")
 
-        return {"player_id": player_id, "full_name": full_name, "season_stats": season_stats}
+        # Ensure all float values are JSON-safe
+        for season in season_stats:
+            for key, value in season.items():
+                if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+                    season[key] = 0
+
+        return {
+            "player_id": player_id,
+            "full_name": full_name,
+            "season_stats": season_stats
+        }
 
     except Exception as e:
         print(f"DB/Stats Error: {e}")
