@@ -129,6 +129,18 @@ export default async function PlayerLineupPage({ params }: { params: Params }) {
             </div>
           </div>
         </section>
+
+        {/* Placeholder for discussion threads */}
+        <section className="bg-white shadow rounded-lg p-6 space-y-4">
+          <div className="mt-6">
+            <h2 className="text-2xl font-semibold text-black">
+              Community Discussion
+            </h2>
+            <p className="text-gray-500">
+              Discussion threads will appear here.
+            </p>
+          </div>
+        </section>
       </div>
     </main>
   );

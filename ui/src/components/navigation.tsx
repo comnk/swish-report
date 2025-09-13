@@ -42,6 +42,7 @@ export default function Navigation() {
 
   const gameItems = [
     { name: "Lineup Builder", href: "/games/lineup-builder/landing-page" },
+    { name: "Player Comparison", href: "/games/player-comparison" },
     { name: "Poeltl", href: "/games/poeltl" },
   ];
 
@@ -148,6 +149,13 @@ export default function Navigation() {
                       onClick={closeDropdowns}
                     >
                       Dashboard
+                    </Link>
+                    <Link
+                      href="/manage-profile"
+                      className="block px-4 py-2 text-slate-700 hover:bg-orange-50 hover:text-orange-600"
+                      onClick={closeDropdowns}
+                    >
+                      Manage Profile
                     </Link>
                     <button
                       onClick={() => {

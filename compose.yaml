@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   db:
     image: mysql:8.0
@@ -13,8 +15,9 @@ services:
     volumes:
       - db_data:/var/lib/mysql
       - ./db/init:/docker-entrypoint-initdb.d
+      - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
       retries: 10
       timeout: 5s

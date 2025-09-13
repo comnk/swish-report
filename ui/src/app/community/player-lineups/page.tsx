@@ -2,22 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Navigation from "@/components/navigation";
-
-interface Lineup {
-  lineup_id: number;
-  user_id: number;
-  mode: string;
-  players: Record<string, number>;
-  scouting_report: {
-    overallScore: number;
-    strengths: string[];
-    weaknesses: string[];
-    synergyNotes: string;
-    floor: string;
-    ceiling: string;
-    overallAnalysis: string;
-  };
-}
+import { Lineup } from "@/types/interfaces";
 
 export default function PlayersLineupPage() {
   const [lineups, setLineups] = useState<Lineup[]>([]);
@@ -81,43 +66,6 @@ export default function PlayersLineupPage() {
                 <span className="text-base font-bold text-blue-600">
                   {lineup.scouting_report.overallScore}
                 </span>
-              </div>
-
-              {/* Strengths & Weaknesses */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-                {/* Strengths */}
-                <div>
-                  <h3 className="text-sm font-semibold text-green-700 mb-1">
-                    Strengths
-                  </h3>
-                  <div className="flex flex-col gap-1">
-                    {lineup.scouting_report.strengths.map((s, i) => (
-                      <div
-                        key={i}
-                        className="bg-green-100 text-green-800 px-2 py-1 rounded shadow-sm text-sm break-words"
-                      >
-                        {s}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Weaknesses */}
-                <div>
-                  <h3 className="text-sm font-semibold text-red-700 mb-1">
-                    Weaknesses
-                  </h3>
-                  <div className="flex flex-col gap-1">
-                    {lineup.scouting_report.weaknesses.map((w, i) => (
-                      <div
-                        key={i}
-                        className="bg-red-100 text-red-800 px-2 py-1 rounded shadow-sm text-sm break-words"
-                      >
-                        {w}
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               {/* Analysis */}
