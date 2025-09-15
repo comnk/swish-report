@@ -3,7 +3,6 @@ from scripts.scraping.fetch_college_player_info import fetch_college_players
 from utils.helpers import launch_browser, normalize_name
 import asyncio
 import json
-from datetime import datetime
 import hashlib
 
 def compute_data_hash(player):
