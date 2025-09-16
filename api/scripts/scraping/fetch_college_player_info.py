@@ -1,17 +1,19 @@
-from utils.helpers import safe_goto, USER_AGENT
-import string
-import re
-import traceback
-import random
 import asyncio
-import hashlib
 import json
+import random
+import re
+import string
+import hashlib
+import traceback
+from utils.helpers import USER_AGENT
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
+
 
 def normalize_list(values):
     return sorted(values) if values else []
 
+
 def compute_college_player_hash(player_obj):
-    """Compute a consistent hash of college player info, ignoring hrefs."""
     fields_to_hash = {
         "name": player_obj.get("name"),
         "years": player_obj.get("years"),
@@ -25,158 +27,159 @@ def compute_college_player_hash(player_obj):
     return hashlib.md5(serialized.encode()).hexdigest()
 
 
-async def scrape_player(browser, data):
-    """Scrape metadata from a single player's page efficiently."""
-    player_url = f"https://www.sports-reference.com{data['href']}"
-    print(f"📝 Scraping player: {data.get('name')} at {player_url}")
-
-    page = None
+async def scrape_player(browser, player_data, timeout=30):
+    """Scrape a single player with per-player timeout and safe cleanup."""
     context = None
+    page = None
     try:
         context = await browser.new_context()
         page = await context.new_page()
         await page.set_extra_http_headers({"User-Agent": USER_AGENT})
-        await safe_goto(page, player_url, timeout=30000)
 
-        result = await page.evaluate(r'''() => {
-            const data = { position: "", height: "", weight: null, awards: [] };
+        async def _scrape():
+            url = f"https://www.sports-reference.com{player_data['href']}"
+            await page.goto(url, wait_until="domcontentloaded", timeout=timeout*1000)
 
-            const metaDiv = document.querySelector("#meta");
-            if (metaDiv) {
-                const pTags = Array.from(metaDiv.querySelectorAll("p"));
-                for (let i = 0; i < pTags.length; i++) {
-                    const strong = pTags[i].querySelector("strong");
-                    if (strong && strong.innerText.toLowerCase().startsWith("position")) {
-                        const match = /Position:\s*<\/strong>\s*([A-Za-z]+)/.exec(pTags[i].innerHTML);
-                        if (match) {
-                            const posMap = { "Guard": "G", "Forward": "F", "Center": "C" };
-                            data.position = posMap[match[1].trim()] || match[1].trim();
+            result = await page.evaluate(r'''() => {
+                const data = { position: "", height: "", weight: null, awards: [] };
+                const metaDiv = document.querySelector("#meta");
+                if (metaDiv) {
+                    const pTags = Array.from(metaDiv.querySelectorAll("p"));
+                    for (let i=0;i<pTags.length;i++){
+                        const strong = pTags[i].querySelector("strong");
+                        if (strong && strong.innerText.toLowerCase().startsWith("position")) {
+                            const match = /Position:\s*<\/strong>\s*([A-Za-z]+)/.exec(pTags[i].innerHTML);
+                            if (match) {
+                                const posMap = { "Guard":"G","Forward":"F","Center":"C" };
+                                data.position = posMap[match[1].trim()]||match[1].trim();
+                            }
+                            if (i+1 < pTags.length) {
+                                const hw = Array.from(pTags[i+1].querySelectorAll("span")).map(el=>el.innerText.trim());
+                                if (hw.length>0) data.height = hw[0];
+                                if (hw.length>1) data.weight = parseInt(hw[1].replace("lb","").trim())||null;
+                            }
+                            break;
                         }
-                        if (i + 1 < pTags.length) {
-                            const hwMatches = Array.from(pTags[i+1].querySelectorAll("span"))
-                                .map(el => el.innerText.trim());
-                            if (hwMatches.length > 0) data.height = hwMatches[0];
-                            if (hwMatches.length > 1) data.weight = parseInt(hwMatches[1].replace("lb","").trim()) || null;
-                        }
-                        break;
                     }
                 }
-            }
+                const bling = document.querySelectorAll("ul#bling li a");
+                data.awards = Array.from(bling).map(a=>a.innerText.trim()).filter(Boolean);
+                return data;
+            }''')
 
-            const bling = document.querySelectorAll("ul#bling li a");
-            data.awards = Array.from(bling).map(a => a.innerText.trim()).filter(Boolean);
+            player_data.update(result)
+            player_data['href'] = f"https://www.sports-reference.com{player_data['href']}"
+            print(player_data)
+            
+            return player_data
 
-            return data;
-        }''')
+        return await asyncio.wait_for(_scrape(), timeout=timeout+5)
 
-        data.update(result)
-
-        print(
-            f"✅ Parsed player: {data.get('name')} | Pos: {data.get('position')} | "
-            f"Height: {data.get('height')} | Weight: {data.get('weight')} | Awards: {data.get('awards')}"
-        )
-
+    except (PlaywrightTimeoutError, asyncio.TimeoutError):
+        print(f"⚠️ Timeout scraping {player_data.get('name')}")
     except Exception:
-        print(f"⚠️ Error scraping {player_url}:\n{traceback.format_exc()}")
+        print(f"⚠️ Error scraping {player_data.get('name')}:\n{traceback.format_exc()}")
     finally:
-        if page: await page.close()
-        if context: await context.close()
-
-    return data
-
-
-async def _process_player_batch(browser, batch, players_to_insert, seen_hashes):
-    for player_obj in batch:
-        try:
-            player_obj = await scrape_player(browser, player_obj)
-            player_hash = compute_college_player_hash(player_obj)
-            if player_hash in seen_hashes:
-                continue
-            seen_hashes.add(player_hash)
-
-            if (player_obj.get("weight") is None or player_obj.get("height") is None) and len(player_obj.get("awards")) == 0:
-                print(f"⚠️ Skipping {player_obj['name']} because weight is None")
-                continue
-
-            players_to_insert.append(player_obj)
-        except Exception as e:
-            print(f"⚠️ Error scraping {player_obj.get('name')}: {e}")
-    await asyncio.sleep(random.uniform(2, 5))
+        if page:
+            try: await page.close()
+            except: pass
+        if context:
+            try: await context.close()
+            except: pass
+    return player_data
 
 
-async def fetch_college_players(browser, start_letter="a", existing_players=None,
-                                batch_size=3, letter_delay_range=(5, 10)):
-    """Fetch all men's college basketball players with auto-restart per letter."""
-    if existing_players is None:
-        existing_players = {}
-
+async def fetch_college_players(browser, resume_letter="a", batch_size=3, checkpoint_file="players_checkpoint.json"):
+    """Fetch all men's college basketball players with checkpointing and per-letter robustness."""
     players_to_insert = []
     seen_hashes = set()
+    letters = string.ascii_lowercase[string.ascii_lowercase.index(resume_letter):]
 
-    start_index = string.ascii_lowercase.index(start_letter)
-
-    for letter in string.ascii_lowercase[start_index:]:
-        url = f"https://www.sports-reference.com/cbb/players/{letter}-index.html"
+    for letter in letters:
+        print(f"🔍 Fetching letter {letter}")
         context = None
-        index_page = None
+        page = None
         try:
             context = await browser.new_context()
-            index_page = await context.new_page()
-            await index_page.set_extra_http_headers({"User-Agent": USER_AGENT})
+            page = await context.new_page()
+            await page.set_extra_http_headers({"User-Agent": USER_AGENT})
+            url = f"https://www.sports-reference.com/cbb/players/{letter}-index.html"
+            await page.goto(url, wait_until="domcontentloaded", timeout=30000)
 
-            await safe_goto(index_page, url, timeout=30000)
-            p_elements = await index_page.query_selector_all("#content p")
-            print(f"🔍 Found {len(p_elements)} p tags for letter {letter}")
-
+            p_elements = await page.query_selector_all("#content p")
             batch = []
-            for p in p_elements:
-                player_a = await p.query_selector("a")
+
+            for p_el in p_elements:
+                player_a = await p_el.query_selector("a")
                 if not player_a:
                     continue
-
-                player_name = (await player_a.inner_text()).strip().replace(".", "")
+                name = (await player_a.inner_text()).strip().replace(".", "")
                 href = await player_a.get_attribute("href")
-                if not href or not player_name or player_name.startswith("_") or not re.match(r"^[A-Za-z]", player_name):
+                if not href or not re.match(r"^[A-Za-z]", name):
                     continue
 
-                small = await p.query_selector("small.note")
-                years = ""
-                schools = []
+                small = await p_el.query_selector("small.note")
+                years, schools = "", []
                 if small:
-                    raw_small_text = await small.inner_text()
-                    match = re.search(r"\(\d{4}\s*[-–]\s*\d{4}\)", raw_small_text)
-                    if match:
-                        years = match.group(0)
-                    school_links = await small.query_selector_all("a")
-                    for a in school_links:
-                        school_href = await a.get_attribute("href")
-                        if school_href and "/men/" in school_href:
-                            schools.append({"name": (await a.inner_text()).strip(), "href": school_href})
+                    raw = await small.inner_text()
+                    match = re.search(r"\(\d{4}\s*[-–]\s*\d{4}\)", raw)
+                    if match: years = match.group(0)
+                    for a in await small.query_selector_all("a"):
+                        href_s = await a.get_attribute("href")
+                        if href_s and "/men/" in href_s:
+                            schools.append({"name": (await a.inner_text()).strip(), "href": f"https://www.sports-reference.com{href_s}"})
 
                 if not schools:
                     continue
 
-                player_data = {"name": player_name, "href": href, "years": years, "schools": schools}
-                batch.append(player_data)
+                batch.append({"name": name, "href": href, "years": years, "schools": schools})
 
                 if len(batch) >= batch_size:
-                    await _process_player_batch(browser, batch, players_to_insert, seen_hashes)
+                    for pl in batch:
+                        pl_data = await scrape_player(browser, pl)
+                        h = compute_college_player_hash(pl_data)
+                        if h not in seen_hashes:
+                            seen_hashes.add(h)
+                            players_to_insert.append(pl_data)
                     batch = []
 
-            if batch:
-                await _process_player_batch(browser, batch, players_to_insert, seen_hashes)
+            # process remaining
+            for pl in batch:
+                pl_data = await scrape_player(browser, pl)
+                h = compute_college_player_hash(pl_data)
+                if h not in seen_hashes:
+                    seen_hashes.add(h)
+                    players_to_insert.append(pl_data)
 
-            print(f"✅ Found {len(players_to_insert)} men’s players up to letter {letter}")
-            await asyncio.sleep(random.uniform(*letter_delay_range))
+            # checkpoint to disk
+            with open(checkpoint_file, "w", encoding="utf-8") as f:
+                json.dump(players_to_insert, f, indent=2)
+
+            await page.close()
+            await context.close()
+            await asyncio.sleep(random.uniform(3, 7))
 
         except Exception as e:
-            print(f"💥 Fatal error on letter {letter}, restarting browser: {e}")
-            # Close everything and restart browser loop from current letter
-            if index_page: await index_page.close()
-            if context: await context.close()
-            return players_to_insert, letter  # <-- checkpoint
-        finally:
-            if index_page: await index_page.close()
-            if context: await context.close()
+            print(f"💥 Fatal error on letter {letter}: {e}")
+            if page:
+                try: await page.close()
+                except: pass
+            if context:
+                try: await context.close()
+                except: pass
+            continue
 
-    return players_to_insert, None
+    return players_to_insert
+
+
+async def main():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        try:
+            players = await fetch_college_players(browser)
+            print(f"✅ Scraped {len(players)} players")
+        finally:
+            await browser.close()
+
+if __name__ == "__main__":
+    asyncio.run(main())
