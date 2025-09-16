@@ -137,6 +137,9 @@ async def fetch_college_players(browser, resume_letter="a", batch_size=3, checkp
                 if len(batch) >= batch_size:
                     for pl in batch:
                         pl_data = await scrape_player(browser, pl)
+                        if (pl_data.get("weight") is None or pl_data.get("height") is None) and not pl_data.get("awards"):
+                            print(f"⚠️ Skipping {pl_data['name']} because weight/height is None and no awards")
+                            continue
                         h = compute_college_player_hash(pl_data)
                         if h not in seen_hashes:
                             seen_hashes.add(h)
@@ -146,6 +149,9 @@ async def fetch_college_players(browser, resume_letter="a", batch_size=3, checkp
             # process remaining
             for pl in batch:
                 pl_data = await scrape_player(browser, pl)
+                if (pl_data.get("weight") is None or pl_data.get("height") is None) and not pl_data.get("awards"):
+                    print(f"⚠️ Skipping {pl_data['name']} because weight/height is None and no awards")
+                    continue
                 h = compute_college_player_hash(pl_data)
                 if h not in seen_hashes:
                     seen_hashes.add(h)

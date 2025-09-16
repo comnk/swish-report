@@ -11,16 +11,15 @@ from nba_api.stats.static import players
 from nba_api.stats.endpoints import playercareerstats
 
 
-def fetch_nba_player_stats(full_name: str, is_active: bool = True):
-    """Fetch season-by-season stats for a player by full_name, prioritizing active status."""
+def fetch_nba_player_stats(full_name: str, is_active: bool = True, player_uid: int = None):
+    """Fetch season stats from NBA API and return with frontend-friendly keys."""
     try:
         all_players = players.get_players()
         matches = [p for p in all_players if p['full_name'] == full_name]
-
         if not matches:
             return None
 
-        # Prioritize active players
+        player = None
         if is_active:
             active_matches = [p for p in matches if p.get('is_active')]
             player = active_matches[0] if active_matches else matches[0]
@@ -28,30 +27,19 @@ def fetch_nba_player_stats(full_name: str, is_active: bool = True):
             player = matches[0]
 
         nba_id = player['id']
-
         career = playercareerstats.PlayerCareerStats(player_id=nba_id)
         df = career.get_data_frames()[0]
         if df.empty:
             return None
 
         season_stats = []
+
         for _, row in df.iterrows():
             if row["TEAM_ABBREVIATION"] == "TOT" or row["GP"] == 0:
                 continue
 
-            def safe_div(numerator, denominator):
-                if denominator == 0 or numerator is None or (isinstance(numerator, float) and math.isnan(numerator)):
-                    return 0
-                return round(numerator / denominator, 1)
-
             GP = int(row["GP"])
-            PPG = safe_div(row["PTS"], GP)
-            RPG = safe_div(row["REB"], GP)
-            APG = safe_div(row["AST"], GP)
-            SPG = safe_div(row["STL"], GP)
-            BPG = safe_div(row["BLK"], GP)
-            TOPG = safe_div(row["TOV"], GP)
-            FPG = safe_div(row["PF"], GP)
+            safe_div = lambda num: round(num / GP, 2) if GP > 0 else 0.0
 
             raw_stats = {
                 "PTS": row.get("PTS", 0),
@@ -63,30 +51,46 @@ def fetch_nba_player_stats(full_name: str, is_active: bool = True):
                 "FTM": row.get("FTM", 0),
             }
 
-            advanced = calculate_advanced_stats(GP, raw_stats)
-            for k, v in advanced.items():
-                if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
-                    advanced[k] = 0
+            advanced = calculate_advanced_stats(raw_stats)
 
-            season_stats.append({
+            season_entry = {
                 "Season": row["SEASON_ID"],
                 "Team": row["TEAM_ABBREVIATION"],
                 "GP": GP,
-                "PPG": PPG,
-                "RPG": RPG,
-                "APG": APG,
-                "SPG": SPG,
-                "BPG": BPG,
-                "TOPG": TOPG,
-                "FPG": FPG,
-                **advanced
-            })
+                "PPG": safe_div(row.get("PTS", 0)),
+                "RPG": safe_div(row.get("REB", 0)),
+                "APG": safe_div(row.get("AST", 0)),
+                "SPG": safe_div(row.get("STL", 0)),
+                "BPG": safe_div(row.get("BLK", 0)),
+                "TOPG": safe_div(row.get("TOV", 0)),
+                "FPG": safe_div(row.get("PF", 0)),
+                "PTS": raw_stats["PTS"],
+                "FGA": raw_stats["FGA"],
+                "FGM": raw_stats["FGM"],
+                "3PA": raw_stats["3PA"],
+                "3PM": raw_stats["3PM"],
+                "FTA": raw_stats["FTA"],
+                "FTM": raw_stats["FTM"],
+                "TS": advanced["ts_pct"],
+                "FG": advanced["fg"],
+                "eFG": advanced["efg"],
+                "3P": advanced["three_p"],
+                "FT": advanced["ft"],
+            }
+
+            # Replace NaN/Inf with 0
+            for k, v in season_entry.items():
+                if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                    season_entry[k] = 0.0
+
+            season_stats.append(season_entry)
 
         return season_stats if season_stats else None
 
     except Exception as e:
         print(f"Error fetching NBA stats for {full_name}: {e}")
         return None
+
     
 
 def refresh_player_videos(player_id: int, full_name: str, draft_year: int):

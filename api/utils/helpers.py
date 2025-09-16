@@ -62,9 +62,8 @@ async def safe_goto(page, url, max_retries=3, timeout=60000):
 
 # FUNCTIONS FOR SCOUTING REPORTS
 
-def calculate_advanced_stats(GP, stats):
+def calculate_advanced_stats(stats):
     """Compute TS%, FG%, eFG%, 3P%, and FT% per season."""
-    # Ensure numeric defaults
     FGA = stats.get("FGA") or 0
     FGM = stats.get("FGM") or 0
     FTA = stats.get("FTA") or 0
@@ -73,26 +72,17 @@ def calculate_advanced_stats(GP, stats):
     THREES_MADE = stats.get("3PM") or 0
     THREES_ATT = stats.get("3PA") or 0
 
-    # True Shooting %
-    TS = round(PTS / (2 * (FGA + 0.44 * FTA)) * 100, 1) if (FGA + 0.44 * FTA) > 0 else 0
-
-    # Field Goal %
-    FG_PCT = round(FGM / FGA * 100, 1) if FGA > 0 else 0
-
-    # Effective Field Goal %
-    EFG_PCT = round((FGM + 0.5 * THREES_MADE) / FGA * 100, 1) if FGA > 0 else 0
-
-    # Three Point %
-    TP_PCT = round(THREES_MADE / THREES_ATT * 100, 1) if THREES_ATT > 0 else 0
-
-    # Free Throw %
-    FT_PCT = round(FTM / FTA * 100, 1) if FTA > 0 else 0
+    ts_pct = round(PTS / (2 * (FGA + 0.44 * FTA)) * 100, 2) if (FGA + 0.44 * FTA) > 0 else 0.0
+    fg = round(FGM / FGA * 100, 2) if FGA > 0 else 0.0
+    efg = round((FGM + 0.5 * THREES_MADE) / FGA * 100, 2) if FGA > 0 else 0.0
+    three_p = round(THREES_MADE / THREES_ATT * 100, 2) if THREES_ATT > 0 else 0.0
+    ft = round(FTM / FTA * 100, 2) if FTA > 0 else 0.0
 
     return {
-        "TS": TS,
-        "FG": FG_PCT,
-        "eFG": EFG_PCT,
-        "3P": TP_PCT,
-        "FT": FT_PCT
+        "ts_pct": ts_pct,
+        "fg": fg,
+        "efg": efg,
+        "three_p": three_p,
+        "ft": ft
     }
 

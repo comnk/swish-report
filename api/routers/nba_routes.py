@@ -146,35 +146,39 @@ def get_nba_player(player_id: int):
 
 
 @router.get("/players/{player_id}/stats")
-def get_nba_player_stats(player_id: int):
+def get_nba_player_stats_endpoint(player_id: int):
     select_sql = """
     SELECT p.full_name, nba.is_active
     FROM players AS p
     INNER JOIN nba_player_info AS nba ON p.player_uid = nba.player_uid
     WHERE p.player_uid = %s
     """
+
     conn = cursor = None
-    
     try:
+        # DB connection
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+
+        # Get player info
         cursor.execute(select_sql, (player_id,))
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Player not found")
 
         full_name = row["full_name"].strip()
-        is_active = row.get("is_active", True)  # default to True if missing
-        
-        season_stats = fetch_nba_player_stats(full_name, is_active=is_active)
+        is_active = row.get("is_active", True)
+
+        # Fetch NBA stats (from API or DB)
+        season_stats = fetch_nba_player_stats(full_name, is_active=is_active, player_uid=player_id)
         if not season_stats:
             raise HTTPException(status_code=404, detail="NBA stats not found")
 
-        # JSON-safe float values
+        # JSON-safe floats & keys for frontend
         for season in season_stats:
             for key, value in season.items():
                 if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
-                    season[key] = 0
+                    season[key] = 0.0
 
         return {
             "player_id": player_id,
@@ -182,15 +186,22 @@ def get_nba_player_stats(player_id: int):
             "season_stats": season_stats
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"DB/Stats Error: {e}")
+        print(f"DB/Stats Error for player_id {player_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
-
     finally:
         if cursor:
-            cursor.close()
+            try:
+                cursor.close()
+            except Exception:
+                pass
         if conn:
-            conn.close()
+            try:
+                conn.close()
+            except Exception:
+                pass
             
 
 @router.get("/players/{player_id}/videos")

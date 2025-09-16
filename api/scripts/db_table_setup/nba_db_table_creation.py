@@ -66,21 +66,41 @@ CREATE TABLE IF NOT EXISTS nba_player_info (
 
 # PLAYER STATS: remove duplicate player_id, add PK, unique (player_uid, season_id), InnoDB
 cursor.execute("""
-CREATE TABLE IF NOT EXISTS nba_player_stats (
+CREATE TABLE nba_player_stats (
     stat_id INT AUTO_INCREMENT PRIMARY KEY,
     player_uid INT NOT NULL,
-    season_id VARCHAR(10) NOT NULL,
-    team_id INT,
-    team_abbreviation VARCHAR(10),
-    gp INT,
-    pts FLOAT,
-    reb FLOAT,
-    ast FLOAT,
-    last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uniq_player_season (player_uid, season_id),
-    CONSTRAINT fk_nps_player FOREIGN KEY (player_uid)
-        REFERENCES players(player_uid) ON DELETE CASCADE
-) ENGINE=InnoDB;
+    season VARCHAR(9) NOT NULL,   -- e.g. '2022-23'
+    team VARCHAR(5) NOT NULL,     -- team abbreviation
+    gp INT NOT NULL,              -- games played
+    ppg DECIMAL(5,2) NOT NULL,    -- points per game
+    rpg DECIMAL(5,2) NOT NULL,    -- rebounds per game
+    apg DECIMAL(5,2) NOT NULL,    -- assists per game
+    spg DECIMAL(5,2) NOT NULL,    -- steals per game
+    bpg DECIMAL(5,2) NOT NULL,    -- blocks per game
+    topg DECIMAL(5,2) NOT NULL,   -- turnovers per game
+    fpg DECIMAL(5,2) NOT NULL,    -- fouls per game
+
+    -- raw totals
+    pts INT NOT NULL,
+    fga INT NOT NULL,
+    fgm INT NOT NULL,
+    three_pa INT NOT NULL,
+    three_pm INT NOT NULL,
+    fta INT NOT NULL,
+    ftm INT NOT NULL,
+
+    -- advanced percentages
+    ts_pct DECIMAL(5,3) DEFAULT 0,    -- True Shooting %
+    fg DECIMAL(5,2) DEFAULT 0,    -- Field Goal %
+    efg DECIMAL(5,2) DEFAULT 0,   -- Effective FG %
+    three_p DECIMAL(5,2) DEFAULT 0, -- 3P %
+    ft DECIMAL(5,2) DEFAULT 0,    -- Free Throw %
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (player_uid) REFERENCES players(player_uid),
+    UNIQUE KEY uniq_player_season_team (player_uid, season, team) -- prevent duplicates
+);
 """)
 
 cursor.execute("""
