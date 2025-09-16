@@ -33,10 +33,12 @@ async def launch_browser(headless=True):
     browser = await playwright.chromium.launch(headless=headless, args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"])
     return playwright, browser
 
-async def safe_goto(browser, page, url, max_retries=3):
+
+async def safe_goto(page, url, max_retries=3, timeout=60000):
+    """Safely navigate to a URL with retries and page recreation if needed."""
     for attempt in range(max_retries):
         try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
             return page
         except Exception as e:
             print(f"⚠️ Navigation failed (attempt {attempt+1}) for {url}: {e}")
@@ -47,15 +49,16 @@ async def safe_goto(browser, page, url, max_retries=3):
             except:
                 pass
 
-            context = await browser.new_context(java_script_enabled=False)
+            browser = page.context.browser
+            context = await browser.new_context()
             page = await context.new_page()
             await page.set_extra_http_headers({"User-Agent": USER_AGENT})
 
             if attempt == max_retries - 1:
                 raise
             await asyncio.sleep(5 + random.random() * 5)
-
     return page
+
 
 # FUNCTIONS FOR SCOUTING REPORTS
 

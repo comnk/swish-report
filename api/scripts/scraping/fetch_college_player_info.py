@@ -26,18 +26,18 @@ def compute_college_player_hash(player_obj):
 
 
 async def scrape_player(browser, data):
-    """Scrape metadata from a single player's page efficiently (warning-free)."""
+    """Scrape metadata from a single player's page efficiently."""
     player_url = f"https://www.sports-reference.com{data['href']}"
     print(f"📝 Scraping player: {data.get('name')} at {player_url}")
 
+    page = None
+    context = None
     try:
-        # Create a new context & page
         context = await browser.new_context()
         page = await context.new_page()
         await page.set_extra_http_headers({"User-Agent": USER_AGENT})
-        await safe_goto(browser, page, player_url)
+        await safe_goto(page, player_url, timeout=30000)
 
-        # Extract meta info in a single evaluate call using raw string
         result = await page.evaluate(r'''() => {
             const data = { position: "", height: "", weight: null, awards: [] };
 
@@ -54,7 +54,7 @@ async def scrape_player(browser, data):
                         }
                         if (i + 1 < pTags.length) {
                             const hwMatches = Array.from(pTags[i+1].querySelectorAll("span"))
-                                                .map(el => el.innerText.trim());
+                                .map(el => el.innerText.trim());
                             if (hwMatches.length > 0) data.height = hwMatches[0];
                             if (hwMatches.length > 1) data.weight = parseInt(hwMatches[1].replace("lb","").trim()) || null;
                         }
@@ -79,14 +79,13 @@ async def scrape_player(browser, data):
     except Exception:
         print(f"⚠️ Error scraping {player_url}:\n{traceback.format_exc()}")
     finally:
-        await page.close()
-        await context.close()
+        if page: await page.close()
+        if context: await context.close()
 
     return data
 
 
 async def _process_player_batch(browser, batch, players_to_insert, seen_hashes):
-    """Scrape and deduplicate a batch of players."""
     for player_obj in batch:
         try:
             player_obj = await scrape_player(browser, player_obj)
@@ -105,21 +104,27 @@ async def _process_player_batch(browser, batch, players_to_insert, seen_hashes):
     await asyncio.sleep(random.uniform(2, 5))
 
 
-async def fetch_college_players(browser, existing_players=None, batch_size=3, letter_delay_range=(5, 10)):
-    """Fetch all men's college basketball players efficiently."""
+async def fetch_college_players(browser, start_letter="a", existing_players=None,
+                                batch_size=3, letter_delay_range=(5, 10)):
+    """Fetch all men's college basketball players with auto-restart per letter."""
     if existing_players is None:
         existing_players = {}
 
     players_to_insert = []
     seen_hashes = set()
 
-    index_page = await browser.new_page()
-    await index_page.set_extra_http_headers({"User-Agent": USER_AGENT})
+    start_index = string.ascii_lowercase.index(start_letter)
 
-    for letter in string.ascii_lowercase:
+    for letter in string.ascii_lowercase[start_index:]:
         url = f"https://www.sports-reference.com/cbb/players/{letter}-index.html"
+        context = None
+        index_page = None
         try:
-            index_page = await safe_goto(browser, index_page, url)
+            context = await browser.new_context()
+            index_page = await context.new_page()
+            await index_page.set_extra_http_headers({"User-Agent": USER_AGENT})
+
+            await safe_goto(index_page, url, timeout=30000)
             p_elements = await index_page.query_selector_all("#content p")
             print(f"🔍 Found {len(p_elements)} p tags for letter {letter}")
 
@@ -134,14 +139,14 @@ async def fetch_college_players(browser, existing_players=None, batch_size=3, le
                 if not href or not player_name or player_name.startswith("_") or not re.match(r"^[A-Za-z]", player_name):
                     continue
 
-                # Extract years + schools
                 small = await p.query_selector("small.note")
                 years = ""
                 schools = []
                 if small:
                     raw_small_text = await small.inner_text()
                     match = re.search(r"\(\d{4}\s*[-–]\s*\d{4}\)", raw_small_text)
-                    if match: years = match.group(0)
+                    if match:
+                        years = match.group(0)
                     school_links = await small.query_selector_all("a")
                     for a in school_links:
                         school_href = await a.get_attribute("href")
@@ -161,12 +166,17 @@ async def fetch_college_players(browser, existing_players=None, batch_size=3, le
             if batch:
                 await _process_player_batch(browser, batch, players_to_insert, seen_hashes)
 
-            print(f"✅ Found {len(players_to_insert)} men’s players for letter {letter}")
+            print(f"✅ Found {len(players_to_insert)} men’s players up to letter {letter}")
             await asyncio.sleep(random.uniform(*letter_delay_range))
 
         except Exception as e:
-            print(f"⚠️ Failed to load letter {letter}: {e}")
-            continue
+            print(f"💥 Fatal error on letter {letter}, restarting browser: {e}")
+            # Close everything and restart browser loop from current letter
+            if index_page: await index_page.close()
+            if context: await context.close()
+            return players_to_insert, letter  # <-- checkpoint
+        finally:
+            if index_page: await index_page.close()
+            if context: await context.close()
 
-    await index_page.close()
-    return players_to_insert
+    return players_to_insert, None
