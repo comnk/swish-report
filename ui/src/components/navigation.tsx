@@ -42,6 +42,7 @@ export default function Navigation() {
 
   const gameItems = [
     { name: "Lineup Builder", href: "/games/lineup-builder/landing-page" },
+    { name: "Simulated Matchups", href: "/games/simulated-matchups" },
     { name: "Player Comparison", href: "/games/player-comparison" },
     { name: "Poeltl", href: "/games/poeltl" },
   ];
