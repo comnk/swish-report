@@ -166,7 +166,7 @@ def get_nba_player_stats_endpoint(player_id: int):
         if not row:
             raise HTTPException(status_code=404, detail="Player not found")
 
-        full_name = row["full_name"].strip()
+        full_name = handle_name(row["full_name"].strip())
         is_active = row.get("is_active", True)
 
         # Fetch NBA stats (from API or DB)

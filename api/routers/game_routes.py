@@ -1,10 +1,16 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from random import randint
+from typing import Dict, Union, Any, Literal
+
 from core.db import get_db_connection
 from scripts.insertion.ai_generation.insert_nba_lineup_analysis import create_nba_lineup_analysis
 from scripts.insertion.ai_generation.insert_hot_take_analysis import create_hot_take_analysis
-from random import randint
-from typing import Dict, Union, Literal
+from scripts.insertion.ai_generation.insert_player_comparison_analysis import create_player_comparison_analysis
+from utils.nba_helpers import fetch_nba_player_stats
+
 
 import json
 
@@ -18,6 +24,10 @@ class LineupSubmission(BaseModel):
 class HotTakeSubmission(BaseModel):
     user_id: str
     content: str
+
+class PlayerComparisonSubmission(BaseModel):
+    player1_id: str
+    player2_id: str
 
 @router.get("/poeltl/get-player")
 def poeltl_get_daily_player():
@@ -35,6 +45,125 @@ def poeltl_get_daily_player():
     random_player = rows[random_index]
     print(random_player)
     return random_player
+
+
+@router.post("/player-comparison/get-comparison")
+async def get_player_comparison(submission: PlayerComparisonSubmission):
+    select_sql = "SELECT * FROM nba_player_stats WHERE player_uid=%s ORDER BY stat_id ASC;"
+    insert_sql = """
+        INSERT INTO nba_player_stats (
+            player_uid, season, team, gp, ppg, apg, rpg, spg, bpg, topg,
+            fpg, pts, fga, fgm, three_pa, three_pm, fta, ftm,
+            ts_pct, fg, efg, three_p, ft
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """
+    get_name_sql = "SELECT full_name FROM players WHERE player_uid=%s;"
+
+    def get_or_fetch_player(pid: int, cursor, conn) -> dict:
+        # 1️⃣ Check cache
+        cursor.execute(select_sql, (pid,))
+        stats_rows = cursor.fetchall()
+
+        cursor.execute(get_name_sql, (pid,))
+        row = cursor.fetchone()
+        full_name = row["full_name"] if row else f"Player {pid}"
+
+        if stats_rows:
+            for row in stats_rows:
+                row["full_name"] = full_name
+            return {"player_uid": pid, "full_name": full_name, "seasons": stats_rows}
+
+        # 2️⃣ Fetch from NBA API
+        season_stats = fetch_nba_player_stats(full_name) or []
+        if not season_stats:
+            raise HTTPException(status_code=500, detail=f"No stats found for {full_name}")
+
+        all_stats = []
+        for season in season_stats:
+            stats = {
+                "player_uid": pid,
+                "full_name": full_name,
+                "season": season.get("Season", ""),
+                "team": season.get("Team", ""),
+                "gp": season.get("GP", 0),
+                "ppg": season.get("PPG", 0),
+                "apg": season.get("APG", 0),
+                "rpg": season.get("RPG", 0),
+                "spg": season.get("SPG", 0),
+                "bpg": season.get("BPG", 0),
+                "topg": season.get("TOPG", 0),
+                "fpg": season.get("FPG", 0),
+                "pts": season.get("PTS", 0),
+                "fga": season.get("FGA", 0),
+                "fgm": season.get("FGM", 0),
+                "three_pa": season.get("3PA", 0),
+                "three_pm": season.get("3PM", 0),
+                "fta": season.get("FTA", 0),
+                "ftm": season.get("FTM", 0),
+                "ts_pct": season.get("TS", 0),
+                "fg": season.get("FG", 0),
+                "efg": season.get("eFG", 0),
+                "three_p": season.get("3P", 0),
+                "ft": season.get("FT", 0),
+            }
+            values = [
+                stats["player_uid"], stats["season"], stats["team"], stats["gp"], stats["ppg"],
+                stats["apg"], stats["rpg"], stats["spg"], stats["bpg"], stats["topg"],
+                stats["fpg"], stats["pts"], stats["fga"], stats["fgm"], stats["three_pa"],
+                stats["three_pm"], stats["fta"], stats["ftm"], stats["ts_pct"], stats["fg"],
+                stats["efg"], stats["three_p"], stats["ft"]
+            ]
+            cursor.execute(insert_sql, values)
+            all_stats.append(stats)
+        conn.commit()
+
+        return {"player_uid": pid, "full_name": full_name, "seasons": all_stats}
+
+    # 3️⃣ Fetch both players
+    players_data = {}
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(dictionary=True, buffered=True)
+        try:
+            for pid in [submission.player1_id, submission.player2_id]:
+                players_data[pid] = get_or_fetch_player(pid, cursor, conn)
+        finally:
+            cursor.close()
+    finally:
+        conn.close()
+
+    # 4️⃣ Compute latest stats
+    def get_latest_stats(player: dict):
+        seasons = player.get("seasons", [])
+        latest = seasons[-1] if seasons else {"ppg": 0, "apg": 0, "rpg": 0}
+        return {
+            "ppg": latest.get("ppg", 0),
+            "apg": latest.get("apg", 0),
+            "rpg": latest.get("rpg", 0),
+        }
+
+    # 5️⃣ Pass all seasons to AI
+    ai_analysis = await create_player_comparison_analysis(
+        players_data[submission.player1_id]["seasons"],
+        players_data[submission.player2_id]["seasons"]
+    )
+
+    result = {
+        "player1": {
+            "full_name": players_data[submission.player1_id]["full_name"],
+            "latest": get_latest_stats(players_data[submission.player1_id]),
+            "all_seasons": players_data[submission.player1_id]["seasons"],
+        },
+        "player2": {
+            "full_name": players_data[submission.player2_id]["full_name"],
+            "latest": get_latest_stats(players_data[submission.player2_id]),
+            "all_seasons": players_data[submission.player2_id]["seasons"],
+        },
+        "ai_analysis": ai_analysis
+    }
+
+    return JSONResponse(content=jsonable_encoder(result))
+
 
 
 @router.post("/lineup-builder/submit-lineup", response_model=dict)

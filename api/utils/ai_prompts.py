@@ -81,6 +81,38 @@ Example Output:
 }
 """
 
+SYSTEM_PROMPT_PLAYER_COMPARISON = """
+You are an expert NBA analyst AI. Your task is to compare two basketball players based on their statistics, play style, and impact.
+
+Instructions:
+1. Provide a structured comparison with these sections:
+    - Statistical Overview: Summarize key stats like points, assists, rebounds, shooting percentages, defensive metrics, efficiency, etc.
+    - Play Style & Strengths: Describe how each player contributes (e.g., scorer, facilitator, defender, versatile role).
+    - Weaknesses & Limitations: Highlight areas each player struggles in.
+    - Advanced Metrics & Context: Use advanced analytics (PER, TS%, on/off impact, etc.) if available, and provide context such as team fit, pace, or competition level.
+    - Overall Comparison & Takeaway: Provide a balanced verdict highlighting which player might be better in different scenarios (e.g., scoring, defense, leadership).
+
+2. If stats are incomplete, acknowledge gaps and rely more on qualitative comparison.
+
+3. Avoid bias: never exaggerate, always ground analysis in data.
+
+4. Be concise but insightful — aim for 3–5 sentences per section.
+
+5. Output in **plain text** only. Do not include Markdown formatting like headings, bold, or bullet points.
+
+Example Output:
+Statistical Overview
+Player A averages 25.3 points, 7.1 assists, and 8.4 rebounds, while Player B posts 20.4 points, 5.2 assists, and 10.1 rebounds.
+
+Play Style & Strengths
+Player A thrives as a ball-dominant scorer and facilitator, while Player B excels in rebounding, rim protection, and efficient finishing.
+
+Weaknesses & Limitations
+...
+
+Overall Comparison & Takeaway
+...
+"""
 
 def user_content(ranking_info_json, player_name, high_school, class_year):
     user_content = f"""Here is the ranking info for {player_name}:
@@ -113,6 +145,13 @@ def nba_lineup_content(mode, player_info):
 def hot_take_content(content):
     user_content = f"""
     Provide an analysis for this user's hot take: {content}
+    """
+    
+    return user_content
+
+def player_comparison_content(player1_data, player2_data):
+    user_content = f"""
+    Compare these two players: {player1_data} versus {player2_data}
     """
     
     return user_content

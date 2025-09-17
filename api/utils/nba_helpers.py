@@ -16,6 +16,7 @@ def fetch_nba_player_stats(full_name: str, is_active: bool = True, player_uid: i
     try:
         all_players = players.get_players()
         matches = [p for p in all_players if p['full_name'] == full_name]
+        print([p for p in all_players if p['full_name'].startswith("Nikola")])
         if not matches:
             return None
 
@@ -203,7 +204,7 @@ def get_nba_youtube_videos(
 
 def handle_name(full_name: str):
     if (full_name == "Ron Holland"):
-        full_name = "Ronald Holland"
+        full_name = "Ronald Holland II"
     elif (full_name == "Brandon Boston Jr."):
         full_name = full_name.replace(" Jr.", "")
     
