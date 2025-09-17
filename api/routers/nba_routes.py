@@ -147,21 +147,29 @@ def get_nba_player(player_id: int):
 
 @router.get("/players/{player_id}/stats")
 def get_nba_player_stats_endpoint(player_id: int):
-    select_sql = """
+    select_player_sql = """
     SELECT p.full_name, nba.is_active
     FROM players AS p
     INNER JOIN nba_player_info AS nba ON p.player_uid = nba.player_uid
     WHERE p.player_uid = %s
     """
 
+    select_stats_sql = "SELECT * FROM nba_player_stats WHERE player_uid=%s ORDER BY season ASC;"
+    insert_stats_sql = """
+    INSERT INTO nba_player_stats (
+        player_uid, season, team, gp, ppg, apg, rpg, spg, bpg, topg,
+        fpg, pts, fga, fgm, three_pa, three_pm, fta, ftm,
+        ts_pct, fg, efg, three_p, ft
+    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    """
+
     conn = cursor = None
     try:
-        # DB connection
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Get player info
-        cursor.execute(select_sql, (player_id,))
+        # 1️⃣ Get player info
+        cursor.execute(select_player_sql, (player_id,))
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Player not found")
@@ -169,21 +177,90 @@ def get_nba_player_stats_endpoint(player_id: int):
         full_name = handle_name(row["full_name"].strip())
         is_active = row.get("is_active", True)
 
-        # Fetch NBA stats (from API or DB)
-        season_stats = fetch_nba_player_stats(full_name, is_active=is_active, player_uid=player_id)
-        if not season_stats:
-            raise HTTPException(status_code=404, detail="NBA stats not found")
+        # 2️⃣ Get cached stats
+        cursor.execute(select_stats_sql, (player_id,))
+        cached_stats = cursor.fetchall()
+        seasons_in_db = {s['season'] for s in cached_stats} if cached_stats else set()
 
-        # JSON-safe floats & keys for frontend
-        for season in season_stats:
-            for key, value in season.items():
-                if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
-                    season[key] = 0.0
+        # 3️⃣ Fetch all seasons from API
+        season_stats_from_api = fetch_nba_player_stats(full_name, is_active, player_uid=player_id) or []
+        new_seasons = [s for s in season_stats_from_api if s['Season'] not in seasons_in_db]
+
+        # 4️⃣ Insert new seasons into DB
+        for season in new_seasons:
+            values = [
+                player_id,
+                season['Season'],
+                season['Team'],
+                season['GP'],
+                season['PPG'],
+                season['APG'],
+                season['RPG'],
+                season['SPG'],
+                season['BPG'],
+                season['TOPG'],
+                season['FPG'],
+                season['PTS'],
+                season['FGA'],
+                season['FGM'],
+                season['3PA'],
+                season['3PM'],
+                season['FTA'],
+                season['FTM'],
+                season['TS'],
+                season['FG'],
+                season['eFG'],
+                season['3P'],
+                season['FT'],
+            ]
+            cursor.execute(insert_stats_sql, values)
+
+        if new_seasons:
+            conn.commit()
+
+        # 5️⃣ Combine cached + new seasons with frontend-friendly keys
+        all_seasons = []
+
+        # Map cached DB stats
+        for row in cached_stats:
+            all_seasons.append({
+                "Season": row["season"],
+                "Team": row["team"],
+                "GP": row["gp"],
+                "PPG": row["ppg"],
+                "RPG": row["rpg"],
+                "APG": row["apg"],
+                "SPG": row["spg"],
+                "BPG": row["bpg"],
+                "TOPG": row["topg"],
+                "FPG": row["fpg"],
+                "PTS": row["pts"],
+                "FGA": row["fga"],
+                "FGM": row["fgm"],
+                "3PA": row["three_pa"],
+                "3PM": row["three_pm"],
+                "FTA": row["fta"],
+                "FTM": row["ftm"],
+                "TS": row["ts_pct"],
+                "FG": row["fg"],
+                "eFG": row["efg"],
+                "3P": row["three_p"],
+                "FT": row["ft"],
+            })
+
+        # Add new seasons (already API-mapped)
+        all_seasons.extend(new_seasons)
+
+        # 6️⃣ JSON-safe: replace NaN/Inf
+        for season in all_seasons:
+            for k, v in season.items():
+                if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                    season[k] = 0.0
 
         return {
             "player_id": player_id,
             "full_name": full_name,
-            "season_stats": season_stats
+            "season_stats": all_seasons
         }
 
     except HTTPException:
@@ -193,15 +270,9 @@ def get_nba_player_stats_endpoint(player_id: int):
         raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         if cursor:
-            try:
-                cursor.close()
-            except Exception:
-                pass
+            cursor.close()
         if conn:
-            try:
-                conn.close()
-            except Exception:
-                pass
+            conn.close()
             
 
 @router.get("/players/{player_id}/videos")
