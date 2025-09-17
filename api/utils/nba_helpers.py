@@ -16,7 +16,6 @@ def fetch_nba_player_stats(full_name: str, is_active: bool = True, player_uid: i
     try:
         all_players = players.get_players()
         matches = [p for p in all_players if p['full_name'] == full_name]
-        print([p for p in all_players if p['full_name'].startswith("Nikola")])
         if not matches:
             return None
 
@@ -92,6 +91,33 @@ def fetch_nba_player_stats(full_name: str, is_active: bool = True, player_uid: i
         print(f"Error fetching NBA stats for {full_name}: {e}")
         return None
 
+
+def normalize_season(season: dict) -> dict:
+    """Ensure consistent lowercase keys across DB and API rows."""
+    return {
+        "season": season.get("Season") or season.get("season") or "",
+        "team": season.get("Team") or season.get("team") or "",
+        "gp": season.get("GP") or season.get("gp") or 0,
+        "ppg": season.get("PPG") or season.get("ppg") or 0,
+        "apg": season.get("APG") or season.get("apg") or 0,
+        "rpg": season.get("RPG") or season.get("rpg") or 0,
+        "spg": season.get("SPG") or season.get("spg") or 0,
+        "bpg": season.get("BPG") or season.get("bpg") or 0,
+        "topg": season.get("TOPG") or season.get("topg") or 0,
+        "fpg": season.get("FPG") or season.get("fpg") or 0,
+        "pts": season.get("PTS") or season.get("pts") or 0,
+        "fga": season.get("FGA") or season.get("fga") or 0,
+        "fgm": season.get("FGM") or season.get("fgm") or 0,
+        "three_pa": season.get("3PA") or season.get("three_pa") or 0,
+        "three_pm": season.get("3PM") or season.get("three_pm") or 0,
+        "fta": season.get("FTA") or season.get("fta") or 0,
+        "ftm": season.get("FTM") or season.get("ftm") or 0,
+        "ts_pct": season.get("TS") or season.get("ts_pct") or 0,
+        "fg": season.get("FG") or season.get("fg") or 0,
+        "efg": season.get("eFG") or season.get("efg") or 0,
+        "three_p": season.get("3P") or season.get("three_p") or 0,
+        "ft": season.get("FT") or season.get("ft") or 0,
+    }
     
 
 def refresh_player_videos(player_id: int, full_name: str, draft_year: int):
@@ -207,5 +233,6 @@ def handle_name(full_name: str):
         full_name = "Ronald Holland II"
     elif (full_name == "Brandon Boston Jr."):
         full_name = full_name.replace(" Jr.", "")
-    
+    elif (full_name == "Nikola Jokic"):
+        full_name = full_name.replace("Jokic", "Jokić")
     return full_name

@@ -148,10 +148,3 @@ def hot_take_content(content):
     """
     
     return user_content
-
-def player_comparison_content(player1_data, player2_data):
-    user_content = f"""
-    Compare these two players: {player1_data} versus {player2_data}
-    """
-    
-    return user_content
