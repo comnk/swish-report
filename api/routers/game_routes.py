@@ -9,8 +9,8 @@ from core.db import get_db_connection
 from scripts.insertion.ai_generation.insert_nba_lineup_analysis import create_nba_lineup_analysis
 from scripts.insertion.ai_generation.insert_hot_take_analysis import create_hot_take_analysis
 from scripts.insertion.ai_generation.insert_player_comparison_analysis import create_player_comparison_analysis
+from scripts.insertion.ai_generation.insert_matchup_simulation_analysis import create_matchup_simulation_analysis
 from utils.nba_helpers import fetch_nba_player_stats, handle_name, normalize_season
-
 
 import json
 
@@ -20,6 +20,10 @@ class LineupSubmission(BaseModel):
     mode: Literal["starting5", "rotation"]
     lineup: Dict[str, Union[str, None]]  # positions mapped to player names or null
     email: str
+
+class MatchupSimulationSubmission(BaseModel):
+    lineup1: Dict[str, Union[str, None]]
+    lineup2: Dict[str, Union[str, None]]
 
 class HotTakeSubmission(BaseModel):
     user_id: str
@@ -277,6 +281,59 @@ async def submit_hot_take(submission: HotTakeSubmission):
 
 
 @router.post("/simulated-matchups/submit-matchup", response_model=dict)
-def simulated_matchups():
+async def simulated_matchups(submission: MatchupSimulationSubmission):
+    print("Received submission:", submission.dict())
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
+
+    try:
+        player_ids = list(submission.lineup1.values()) + list(submission.lineup2.values())
+        placeholders = ",".join(["%s"] * len(player_ids))
+
+        select_sql = f"""
+            SELECT
+                p.player_uid,
+                p.full_name,
+                nba.position,
+                nba.height,
+                nba.weight,
+                nba.years_pro,
+                nba.accolades,
+                ai.stars,
+                ai.rating,
+                ai.strengths,
+                ai.weaknesses,
+                ai.ai_analysis
+            FROM players AS p
+            INNER JOIN nba_player_info AS nba
+                ON p.player_uid = nba.player_uid
+            INNER JOIN ai_generated_nba_evaluations AS ai
+                ON p.player_uid = ai.player_uid
+            WHERE p.player_uid IN ({placeholders})
+        """
+        cursor.execute(select_sql, player_ids)
+        results = cursor.fetchall()
+
+        if not results:
+            raise HTTPException(status_code=404, detail="No players found for lineup")
+
+        player_lookup = {str(row["player_uid"]): row for row in results}
+
+        lineup1 = {slot: player_lookup.get(pid) for slot, pid in submission.lineup1.items()}
+        lineup2 = {slot: player_lookup.get(pid) for slot, pid in submission.lineup2.items()}
+
+        analysis_json = await create_matchup_simulation_analysis(lineup1, lineup2)
+        print(analysis_json)
+        
+        return {
+            "scoreA": analysis_json["scoreA"],
+            "scoreB": analysis_json["scoreB"],
+            "mvp": analysis_json["mvp"],
+            "keyStats": analysis_json["keyStats"],
+            "reasoning": analysis_json["reasoning"],
+        }
+
+    finally:
+        cursor.close()
+        conn.close()
+

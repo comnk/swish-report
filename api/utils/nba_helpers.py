@@ -27,7 +27,10 @@ def fetch_nba_player_stats(full_name: str, is_active: bool = True, player_uid: i
             player = matches[0]
 
         nba_id = player['id']
+        print(nba_id)
         career = playercareerstats.PlayerCareerStats(player_id=nba_id)
+        raw = career.get_normalized_dict()
+        print("Raw response for", full_name, ":", raw)
         df = career.get_data_frames()[0]
         if df.empty:
             return None
@@ -179,7 +182,6 @@ def get_nba_youtube_videos(
         request = youtube.search().list(**params)
         response = request.execute()
     except Exception as e:
-        # Gracefully handle API errors
         print(f"YouTube API error for {full_name}: {e}")
         return []
 

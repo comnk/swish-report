@@ -15,14 +15,23 @@ import { NBAPlayer } from "@/types/player";
 interface MatchupResult {
   scoreA: number;
   scoreB: number;
-  mvp: NBAPlayer;
-  keyStats: Record<string, unknown>;
+  mvp: {
+    id: string;
+    name: string;
+    team: "A" | "B";
+    reason: string;
+  };
+  keyStats: {
+    teamA: Record<string, number>;
+    teamB: Record<string, number>;
+  };
   reasoning: string;
 }
 
 export default function SimulatedMatchup() {
   const [players, setPlayers] = useState<NBAPlayer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [search, setSearch] = useState("");
 
   const initialSlots = [
@@ -98,11 +107,51 @@ export default function SimulatedMatchup() {
     fetchNBAPlayers();
   }, []);
 
+  const handleSubmit = async () => {
+    const validateLineup = (lineup: Record<string, string | null>) => {
+      return [...starters, ...bench].every((pos) => lineup[pos] !== null);
+    };
+
+    if (!validateLineup(teamALineup) || !validateLineup(teamBLineup)) {
+      alert(
+        "Both teams must have all starters and bench slots filled before submitting."
+      );
+      return;
+    }
+
+    try {
+      setLoadingSubmit(true); // 🔥 start loading
+      const submission = {
+        lineup1: teamALineup,
+        lineup2: teamBLineup,
+      };
+
+      const res = await fetch(
+        "http://localhost:8000/games/simulated-matchups/submit-matchup",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(submission),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error(`Submission failed: ${res.status}`);
+      }
+
+      const data = (await res.json()) as MatchupResult;
+      setResult(data);
+    } catch (err) {
+      console.error("Error submitting lineups:", err);
+    } finally {
+      setLoadingSubmit(false); // 🔥 stop loading
+    }
+  };
+
   const filteredPlayers = players.filter((p) =>
     p.full_name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // --- Drag handlers ---
   const handleDragStart = (event: DragStartEvent) =>
     setActiveDragId(event.active.id.toString());
 
@@ -114,10 +163,8 @@ export default function SimulatedMatchup() {
     const playerId = active.id.toString();
     const targetSlotId = over.id.toString();
 
-    // Determine which team based on prefixed ID
-    const [teamPrefix, slot] = targetSlotId.split("-"); // "A-PG" => ["A","PG"]
+    const [teamPrefix, slot] = targetSlotId.split("-");
 
-    // Remove player from previous slot
     setTeamALineup((prev) => {
       const updated = { ...prev };
       Object.keys(updated).forEach((pos) => {
@@ -133,37 +180,17 @@ export default function SimulatedMatchup() {
       return updated;
     });
 
-    // Assign to correct team
     if (teamPrefix === "A")
       setTeamALineup((prev) => ({ ...prev, [slot]: playerId }));
     else if (teamPrefix === "B")
       setTeamBLineup((prev) => ({ ...prev, [slot]: playerId }));
   };
 
-  // --- Simulate Matchup ---
-  const simulateMatchup = async () => {
-    try {
-      const payload = {
-        teamA: Object.values(teamALineup),
-        teamB: Object.values(teamBLineup),
-      };
-      const res = await fetch("http://localhost:8000/simulate-matchup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = (await res.json()) as MatchupResult;
-      setResult(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
       <Navigation />
       <div className="max-w-6xl mx-auto mt-10 bg-white p-8 rounded-2xl shadow-lg">
-        <h1 className="text-2xl font-bold mb-6 text-center">
+        <h1 className="text-2xl font-bold mb-6 text-center text-black">
           Simulated Matchup
         </h1>
 
@@ -176,7 +203,9 @@ export default function SimulatedMatchup() {
             <div className="flex flex-col md:flex-row gap-6">
               {/* Team A */}
               <div className="flex-1">
-                <h2 className="font-bold mb-2 text-center">Team A</h2>
+                <h2 className="font-bold mb-2 text-center text-black">
+                  Team A
+                </h2>
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-4 mb-4">
                   {starters.map((pos) => (
                     <LineupSlot
@@ -201,7 +230,9 @@ export default function SimulatedMatchup() {
 
               {/* Team B */}
               <div className="flex-1">
-                <h2 className="font-bold mb-2 text-center">Team B</h2>
+                <h2 className="font-bold mb-2 text-center text-black">
+                  Team B
+                </h2>
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-4 mb-4">
                   {starters.map((pos) => (
                     <LineupSlot
@@ -283,31 +314,63 @@ export default function SimulatedMatchup() {
 
         {/* Simulate Button */}
         <button
-          onClick={simulateMatchup}
+          onClick={handleSubmit}
           className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition"
         >
-          Simulate Matchup
+          Submit Lineup & Simulate
         </button>
 
         {/* Results */}
-        {result && (
-          <div className="mt-6 p-4 bg-gray-100 rounded-lg text-center font-medium">
-            <h2 className="font-bold mb-2">Predicted Score</h2>
-            <p>
+        {loadingSubmit && (
+          <div className="mt-6 p-4 bg-gray-200 rounded-lg text-center font-medium text-black">
+            <p>Simulating matchup... 🏀</p>
+          </div>
+        )}
+
+        {!loadingSubmit && result && (
+          <div className="mt-6 p-4 bg-gray-100 rounded-lg text-center font-medium text-black">
+            <h2 className="font-bold mb-2 text-black">Predicted Score</h2>
+            <p className="text-black">
               Team A: {result.scoreA} - Team B: {result.scoreB}
             </p>
-            <p className="mt-2">MVP: {result.mvp.full_name}</p>
-            <div className="mt-2">
+            <p className="mt-2 text-black">
+              MVP: <span className="font-semibold">{result.mvp.name}</span> from{" "}
+              <b>Team {result.mvp.team}</b>
+            </p>
+            <p className="text-sm italic text-gray-700">{result.mvp.reason}</p>
+            <div className="mt-2 text-black">
               <h3 className="font-semibold">Key Stats:</h3>
-              <ul>
-                {Object.entries(result.keyStats).map(([k, v]) => (
-                  <li key={k}>
-                    {k}: {String(v)}
-                  </li>
-                ))}
-              </ul>
+              <div className="grid grid-cols-2 gap-4 mt-2 text-left">
+                {/* Team A */}
+                <div>
+                  <h4 className="font-semibold">Team A</h4>
+                  <ul className="list-disc list-inside">
+                    {Object.entries(result.keyStats.teamA).map(
+                      ([stat, value]) => (
+                        <li key={stat}>
+                          {stat}: {value}
+                        </li>
+                      )
+                    )}
+                  </ul>
+                </div>
+
+                {/* Team B */}
+                <div>
+                  <h4 className="font-semibold">Team B</h4>
+                  <ul className="list-disc list-inside">
+                    {Object.entries(result.keyStats.teamB).map(
+                      ([stat, value]) => (
+                        <li key={stat}>
+                          {stat}: {value}
+                        </li>
+                      )
+                    )}
+                  </ul>
+                </div>
+              </div>
             </div>
-            <p className="mt-2 italic">{result.reasoning}</p>
+            <p className="mt-2 italic text-gray-700">{result.reasoning}</p>
           </div>
         )}
       </div>

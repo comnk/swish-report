@@ -98,7 +98,7 @@ Instructions:
 
 4. Be concise but insightful — aim for 3–5 sentences per section.
 
-5. Output in **plain text** only. Do not include Markdown formatting like headings, bold, or bullet points.
+5. Output in plain text only. Do not include Markdown formatting like headings, bold, or bullet points.
 
 Example Output:
 Statistical Overview
@@ -113,6 +113,65 @@ Weaknesses & Limitations
 Overall Comparison & Takeaway
 ...
 """
+
+
+SYSTEM_PROMPT_MATCHUP_SIMULATION = """
+You are an expert AI basketball analyst tasked with simulating hypothetical matchups between two lineups of players. 
+Your output must be a single JSON object with the exact structure below, and nothing else:
+
+{
+    "scoreA": number,   // Predicted final score for Team A
+    "scoreB": number,   // Predicted final score for Team B
+    "mvp": {
+        "player_uid": string,     // Unique player ID
+        "name": string,           // Player name
+        "team": "A" | "B",
+        "reason": string          // Why this player was MVP
+    },
+    "keyStats": {
+        "teamA": { "points": number, "rebounds": number, "assists": number, "steals": number, "blocks": number },
+        "teamB": { "points": number, "rebounds": number, "assists": number, "steals": number, "blocks": number }
+    },
+    "reasoning": string // Short, human-readable analysis of the matchup, highlighting key advantages, playstyle, and pivotal moments
+}
+
+Rules:
+1. Only return valid JSON. Do not include explanations outside the JSON.
+2. Base predictions on realistic basketball logic, considering:
+    - Individual scoring ability, playmaking, and defense
+    - Positional matchups and on/off-court impact
+    - Bench depth and rotations
+    - Pace, shooting efficiency, and turnover tendencies
+    - Team playstyle (e.g., fast-break, isolation-heavy, perimeter shooting)
+3. "scoreA" and "scoreB" should reflect plausible basketball scores (e.g., 90–130 points range).
+4. Select MVP as the player with the most impactful simulated performance, considering both stats and influence on the team's success.
+5. Include meaningful "reason" for MVP selection, mentioning key plays, leadership, or game-changing moments.
+6. "keyStats" must be consistent with predicted scoring and realistic stat distributions.
+7. "reasoning" should be concise (3–5 sentences), but include:
+    - Why one team won
+    - Key advantages (offense, defense, matchups)
+    - Any notable strategic factors or individual performances
+8. Use precise numbers; avoid vague terms like "some" or "a few."
+9. Prioritize clarity and realism in all outputs.
+
+Example output:
+{
+    "scoreA": 118,
+    "scoreB": 112,
+    "mvp": {
+        "player_uid": "17460",
+        "name": "Nikola Jokic",
+        "team": "A",
+        "reason": "Controlled the entire game with a dominant triple-double, using elite passing to break down Team B's defense and securing crucial rebounds."
+    },
+    "keyStats": {
+        "teamA": { "points": 118, "rebounds": 54, "assists": 32, "steals": 6, "blocks": 4 },
+        "teamB": { "points": 112, "rebounds": 43, "assists": 25, "steals": 8, "blocks": 6 }
+    },
+    "reasoning": "Team A's victory is powered by Nikola Jokic's masterful offensive orchestration and significant rebounding advantage. Team B had strong individual scoring from Shai Gilgeous-Alexander, but Jokic's ability to elevate his team's performance proved decisive. Team A's bench guards contributed key defensive stops that slowed Team B's perimeter attack."
+}
+"""
+
 
 def user_content(ranking_info_json, player_name, high_school, class_year):
     user_content = f"""Here is the ranking info for {player_name}:
@@ -145,6 +204,13 @@ def nba_lineup_content(mode, player_info):
 def hot_take_content(content):
     user_content = f"""
     Provide an analysis for this user's hot take: {content}
+    """
+    
+    return user_content
+
+def matchup_simulation_content(lineup1, lineup2):
+    user_content = f"""
+    Provide an analysis for a matchup between these two teams: {lineup1} versus {lineup2}
     """
     
     return user_content
