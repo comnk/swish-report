@@ -274,3 +274,9 @@ async def submit_hot_take(submission: HotTakeSubmission):
     finally:
         cursor.close()
         conn.close()
+
+
+@router.post("/simulated-matchups/submit-matchup", response_model=dict)
+def simulated_matchups():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
