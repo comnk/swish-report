@@ -36,7 +36,7 @@ async def create_matchup_simulation_analysis(lineup1, lineup2) -> dict:
         # Validate keys
         required_keys = [
             "scoreA", "scoreB", "mvp",
-            "keyStats", "reasoning"
+            "keyStats", "players", "reasoning"
         ]
         if not all(key in analysis_json for key in required_keys):
             raise HTTPException(

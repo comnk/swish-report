@@ -12,18 +12,39 @@ import LineupSlot from "@/components/lineup-builder-slot";
 import PlayerCard from "@/components/lineup-builder-card";
 import { NBAPlayer } from "@/types/player";
 
+interface PlayerStats extends NBAPlayer {
+  minutes: number;
+  points: number;
+  rebounds: number;
+  offRebounds: number;
+  defRebounds: number;
+  assists: number;
+  steals: number;
+  blocks: number;
+  turnovers: number;
+  fouls: number;
+  fgPct: number;
+  threePct: number;
+  ftPct: number;
+  impact: string;
+}
+
 interface MatchupResult {
   scoreA: number;
   scoreB: number;
   mvp: {
     id: string;
-    name: string;
+    full_name: string;
     team: "A" | "B";
     reason: string;
   };
   keyStats: {
     teamA: Record<string, number>;
     teamB: Record<string, number>;
+  };
+  players: {
+    teamA: PlayerStats[];
+    teamB: PlayerStats[];
   };
   reasoning: string;
 }
@@ -342,9 +363,10 @@ export default function SimulatedMatchup() {
 
             {/* MVP Card */}
             <div className="p-4 rounded-2xl shadow-lg bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-200 text-black">
-              <h3 className="text-xl font-bold mb-2">MVP 🏆</h3>
+              <h3 className="text-xl font-bold mb-2">
+                MVP: {result.mvp.full_name} 🏆
+              </h3>
               <p className="text-lg font-semibold">
-                {result.mvp.name}{" "}
                 <span className="font-normal">
                   ({`Team ${result.mvp.team}`})
                 </span>
@@ -352,51 +374,123 @@ export default function SimulatedMatchup() {
               <p className="text-sm italic mt-1">{result.mvp.reason}</p>
             </div>
 
-            {/* Key Stats Tables */}
+            {/* Teams Stats & Players */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Team A Stats */}
-              <div className="bg-white rounded-lg shadow p-4 text-black">
-                <h4 className="font-bold mb-2 text-center">Team A Stats</h4>
-                <table className="w-full text-left border border-gray-300 text-black">
-                  <tbody>
-                    {Object.entries(result.keyStats.teamA).map(
-                      ([stat, value]) => (
-                        <tr
-                          key={stat}
-                          className="border-b border-gray-300 last:border-b-0 text-black hover:bg-gray-50"
-                        >
-                          <td className="px-2 py-1 font-medium text-black">
-                            {stat}
-                          </td>
-                          <td className="px-2 py-1 text-black">{value}</td>
-                        </tr>
-                      )
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              {(["A", "B"] as const).map((team) => {
+                const teamStats =
+                  team === "A" ? result.keyStats.teamA : result.keyStats.teamB;
+                const teamPlayers =
+                  team === "A" ? result.players.teamA : result.players.teamB;
 
-              {/* Team B Stats */}
-              <div className="bg-white rounded-lg shadow p-4 text-black">
-                <h4 className="font-bold mb-2 text-center">Team B Stats</h4>
-                <table className="w-full text-left border border-gray-300 text-black">
-                  <tbody>
-                    {Object.entries(result.keyStats.teamB).map(
-                      ([stat, value]) => (
-                        <tr
-                          key={stat}
-                          className="border-b border-gray-300 last:border-b-0 text-black hover:bg-gray-50"
-                        >
-                          <td className="px-2 py-1 font-medium text-black">
-                            {stat}
-                          </td>
-                          <td className="px-2 py-1 text-black">{value}</td>
-                        </tr>
-                      )
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                return (
+                  <div
+                    key={team}
+                    className="bg-white rounded-lg shadow p-4 text-black space-y-4"
+                  >
+                    <h4 className="font-bold mb-2 text-center">{`Team ${team} Stats`}</h4>
+
+                    {/* Stats Table */}
+                    <table className="w-full text-left border border-gray-300 text-black">
+                      <tbody>
+                        {Object.entries(teamStats).map(([stat, value]) => (
+                          <tr
+                            key={stat}
+                            className="border-b border-gray-300 last:border-b-0 text-black hover:bg-gray-50"
+                          >
+                            <td className="px-2 py-1 font-medium text-black">
+                              {stat}
+                            </td>
+                            <td className="px-2 py-1 text-black">{value}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    {/* Players */}
+                    <div>
+                      <h5 className="font-semibold mb-2 text-center">{`Team ${team} Players`}</h5>
+                      <div className="overflow-x-auto">
+                        <table className="w-full table-auto border border-gray-300 text-black">
+                          <thead>
+                            <tr className="bg-gray-200">
+                              <th className="px-2 py-1 border">Player</th>
+                              <th className="px-2 py-1 border">Pos</th>
+                              <th className="px-2 py-1 border">Min</th>
+                              <th className="px-2 py-1 border">Pts</th>
+                              <th className="px-2 py-1 border">Reb</th>
+                              <th className="px-2 py-1 border">Ast</th>
+                              <th className="px-2 py-1 border">OReb</th>
+                              <th className="px-2 py-1 border">DReb</th>
+                              <th className="px-2 py-1 border">Stl</th>
+                              <th className="px-2 py-1 border">Blk</th>
+                              <th className="px-2 py-1 border">TO</th>
+                              <th className="px-2 py-1 border">Fouls</th>
+                              <th className="px-2 py-1 border">FG%</th>
+                              <th className="px-2 py-1 border">3P%</th>
+                              <th className="px-2 py-1 border">FT%</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {teamPlayers.map((p) => (
+                              <tr key={p.id} className="hover:bg-gray-50">
+                                <td className="px-2 py-1 font-medium border">
+                                  {p.full_name}
+                                </td>
+                                <td className="px-2 py-1 border">
+                                  {p.position}
+                                </td>
+                                <td className="px-2 py-1 border">
+                                  {p.minutes}
+                                </td>
+                                <td className="px-2 py-1 border">{p.points}</td>
+                                <td className="px-2 py-1 border">
+                                  {p.rebounds}
+                                </td>
+                                <td className="px-2 py-1 border">
+                                  {p.assists}
+                                </td>
+                                <td className="px-2 py-1 border">
+                                  {p.offRebounds}
+                                </td>
+                                <td className="px-2 py-1 border">
+                                  {p.defRebounds}
+                                </td>
+                                <td className="px-2 py-1 border">{p.steals}</td>
+                                <td className="px-2 py-1 border">{p.blocks}</td>
+                                <td className="px-2 py-1 border">
+                                  {p.turnovers}
+                                </td>
+                                <td className="px-2 py-1 border">{p.fouls}</td>
+                                <td className="px-2 py-1 border">
+                                  {(p.fgPct * 100).toFixed(1)}%
+                                </td>
+                                <td className="px-2 py-1 border">
+                                  {(p.threePct * 100).toFixed(1)}%
+                                </td>
+                                <td className="px-2 py-1 border">
+                                  {(p.ftPct * 100).toFixed(1)}%
+                                </td>
+                              </tr>
+                            ))}
+                            {/* Impact row below each player */}
+                            {teamPlayers.map((p) => (
+                              <tr key={p.id + "-impact"} className="bg-gray-50">
+                                <td
+                                  className="px-2 py-1 italic text-xs text-center border"
+                                  colSpan={15}
+                                >
+                                  <b>{p.full_name}: </b>
+                                  {p.impact}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Matchup Reasoning */}
