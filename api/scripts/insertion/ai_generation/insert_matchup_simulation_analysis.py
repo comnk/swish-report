@@ -28,6 +28,7 @@ async def create_matchup_simulation_analysis(lineup1, lineup2) -> dict:
         try:
             analysis_json = json.loads(analysis_str)
         except json.JSONDecodeError as e:
+            print("Gemini API error:", str(e))
             raise HTTPException(
                 status_code=500,
                 detail=f"AI analysis did not return valid JSON: {str(e)} | OUTPUT: {analysis_str}"

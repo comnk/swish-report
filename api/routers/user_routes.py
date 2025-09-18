@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from core.db import get_db_connection
 from typing import List
 
@@ -40,3 +40,19 @@ def get_user_hot_takes(user_email: str):
     cursor.close()
     conn.close()
     return results
+
+@router.get("/get-username/{email}")
+def get_username(email: str):
+    select_sql = """SELECT username FROM users WHERE email=%s"""
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(select_sql, (email,))
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {"username": row["username"]}

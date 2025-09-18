@@ -5,7 +5,7 @@ from utils.helpers import launch_browser
 from core.db import get_db_connection
 
 async def load_current_player_rankings_async():
-    class_years = [2021, 2022, 2023, 2024, 2025, 2026, 2027]
+    class_years = [2024, 2025]
 
     print("🚀 Starting serial data collection...")
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Navigation from "@/components/navigation";
+import CommentsSection from "@/components/threaded-comments";
 
 type HotTake = {
   take_id: number;
@@ -16,21 +17,33 @@ type HotTake = {
 
 export default function HotTakePage() {
   const pathname = usePathname(); // e.g., /community/hot-takes/123
-  const take_id = pathname.split("/").pop(); // get "123"
+  const take_id = pathname.split("/").pop();
 
   const [hotTake, setHotTake] = useState<HotTake | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!take_id) return;
+    const token = localStorage.getItem("token");
+    const user_email = localStorage.getItem("user_email");
+
+    if (!token || !user_email) {
+      setError("You must be signed in to view and comment.");
+      setLoading(false);
+      return;
+    }
 
     const fetchHotTake = async () => {
       try {
         const res = await fetch(
-          `http://localhost:8000/community/hot-takes/${take_id}`
+          `http://localhost:8000/community/hot-takes/${take_id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
-        if (!res.ok) throw new Error("Failed to fetch hot take");
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.detail || "Failed to fetch hot take.");
+        }
         const data: HotTake = await res.json();
         setHotTake(data);
       } catch (err) {
@@ -40,7 +53,24 @@ export default function HotTakePage() {
       }
     };
 
-    fetchHotTake();
+    const fetchUsername = async () => {
+      try {
+        const res = await fetch(
+          `http://localhost:8000/user/get-username/${user_email}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!res.ok) throw new Error("Failed to fetch username.");
+        const data = await res.json();
+        setUsername(data.username);
+      } catch (err) {
+        console.error("Failed to fetch username:", err);
+      }
+    };
+
+    if (take_id) {
+      fetchHotTake();
+      fetchUsername();
+    }
   }, [take_id]);
 
   return (
@@ -57,28 +87,25 @@ export default function HotTakePage() {
             </h2>
             <p className="text-gray-800">{hotTake.content}</p>
 
-            {hotTake.truthfulness_score !== null &&
-              hotTake.truthfulness_score !== undefined && (
-                <div className="p-4 bg-gray-50 rounded text-black">
-                  <p>
-                    <strong>AI Truthfulness Score:</strong>{" "}
-                    {Number(hotTake.truthfulness_score).toFixed(1)}%
-                  </p>
-                  <p>
-                    <strong>AI Insight:</strong> {hotTake.ai_insight}
-                  </p>
-                </div>
-              )}
+            {hotTake.truthfulness_score != null && (
+              <div className="p-4 bg-gray-50 rounded text-black">
+                <p>
+                  <strong>AI Truthfulness Score:</strong>{" "}
+                  {Number(hotTake.truthfulness_score).toFixed(1)}%
+                </p>
+                <p>
+                  <strong>AI Insight:</strong> {hotTake.ai_insight}
+                </p>
+              </div>
+            )}
 
-            {/* Placeholder for discussion threads */}
-            <div className="mt-6">
-              <h3 className="font-semibold text-gray-900 mb-2">
-                Community Discussion
-              </h3>
-              <p className="text-gray-500">
-                Discussion threads will appear here.
+            {username ? (
+              <CommentsSection take_id={hotTake.take_id} username={username} />
+            ) : (
+              <p className="text-gray-500 mt-4">
+                Sign in to participate in the discussion.
               </p>
-            </div>
+            )}
           </div>
         )}
       </div>

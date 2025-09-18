@@ -476,7 +476,7 @@ export default function SimulatedMatchup() {
                             {teamPlayers.map((p) => (
                               <tr key={p.id + "-impact"} className="bg-gray-50">
                                 <td
-                                  className="px-2 py-1 italic text-xs text-center border"
+                                  className="px-2 py-1 italic text-xs border"
                                   colSpan={15}
                                 >
                                   <b>{p.full_name}: </b>

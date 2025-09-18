@@ -282,7 +282,6 @@ async def submit_hot_take(submission: HotTakeSubmission):
 
 @router.post("/simulated-matchups/submit-matchup", response_model=dict)
 async def simulated_matchups(submission: MatchupSimulationSubmission):
-    print(submission)
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
