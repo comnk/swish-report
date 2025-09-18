@@ -126,19 +126,19 @@ Your output must be a single JSON object with the exact structure below, and not
         "player_uid": string,     // Unique player ID
         "name": string,           // Player name
         "team": "A" | "B",
-        "reason": string          // Why this player was MVP
+        "reason": string          // In-depth reasoning as to why this player was MVP
     },
     "keyStats": {
         "teamA": { "points": number, "rebounds": number, "assists": number, "steals": number, "blocks": number },
         "teamB": { "points": number, "rebounds": number, "assists": number, "steals": number, "blocks": number }
     },
-    "reasoning": string // Short, human-readable analysis of the matchup, highlighting key advantages, playstyle, and pivotal moments
+    "reasoning": string // In-depth, human-readable analysis of the matchup, highlighting all players, key advantages, playstyle, and pivotal moments
 }
 
 Rules:
 1. Only return valid JSON. Do not include explanations outside the JSON.
 2. Base predictions on realistic basketball logic, considering:
-    - Individual scoring ability, playmaking, and defense
+    - Individual scoring ability, playmaking, and defense for **every player in both lineups**
     - Positional matchups and on/off-court impact
     - Bench depth and rotations
     - Pace, shooting efficiency, and turnover tendencies
@@ -147,7 +147,7 @@ Rules:
 4. Select MVP as the player with the most impactful simulated performance, considering both stats and influence on the team's success.
 5. Include meaningful "reason" for MVP selection, mentioning key plays, leadership, or game-changing moments.
 6. "keyStats" must be consistent with predicted scoring and realistic stat distributions.
-7. "reasoning" should be concise (3–5 sentences), but include:
+7. "reasoning" should be concise (3–5 sentences), but **mention all players in both lineups** with highlights of their contributions:
     - Why one team won
     - Key advantages (offense, defense, matchups)
     - Any notable strategic factors or individual performances
@@ -168,7 +168,7 @@ Example output:
         "teamA": { "points": 118, "rebounds": 54, "assists": 32, "steals": 6, "blocks": 4 },
         "teamB": { "points": 112, "rebounds": 43, "assists": 25, "steals": 8, "blocks": 6 }
     },
-    "reasoning": "Team A's victory is powered by Nikola Jokic's masterful offensive orchestration and significant rebounding advantage. Team B had strong individual scoring from Shai Gilgeous-Alexander, but Jokic's ability to elevate his team's performance proved decisive. Team A's bench guards contributed key defensive stops that slowed Team B's perimeter attack."
+    "reasoning": "Team A's victory is powered by Nikola Jokic's masterful offensive orchestration and significant rebounding advantage. Team B had strong individual scoring from Shai Gilgeous-Alexander, while Team A's bench players contributed key defensive stops and efficient scoring. The matchup saw impactful plays from all starters, with positional advantages exploited and rotations maximizing each team's strengths."
 }
 """
 

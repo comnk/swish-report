@@ -328,49 +328,82 @@ export default function SimulatedMatchup() {
         )}
 
         {!loadingSubmit && result && (
-          <div className="mt-6 p-4 bg-gray-100 rounded-lg text-center font-medium text-black">
-            <h2 className="font-bold mb-2 text-black">Predicted Score</h2>
-            <p className="text-black">
-              Team A: {result.scoreA} - Team B: {result.scoreB}
-            </p>
-            <p className="mt-2 text-black">
-              MVP: <span className="font-semibold">{result.mvp.name}</span> from{" "}
-              <b>Team {result.mvp.team}</b>
-            </p>
-            <p className="text-sm italic text-gray-700">{result.mvp.reason}</p>
-            <div className="mt-2 text-black">
-              <h3 className="font-semibold">Key Stats:</h3>
-              <div className="grid grid-cols-2 gap-4 mt-2 text-left">
-                {/* Team A */}
-                <div>
-                  <h4 className="font-semibold">Team A</h4>
-                  <ul className="list-disc list-inside">
+          <div className="mt-6 space-y-6">
+            {/* Predicted Score */}
+            <div className="p-4 bg-gray-100 rounded-lg text-center font-medium text-black">
+              <h2 className="font-bold mb-2 text-black text-xl">
+                Predicted Score
+              </h2>
+              <p className="text-black text-lg">
+                Team A: <span className="font-semibold">{result.scoreA}</span> -
+                Team B: <span className="font-semibold">{result.scoreB}</span>
+              </p>
+            </div>
+
+            {/* MVP Card */}
+            <div className="p-4 rounded-2xl shadow-lg bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-200 text-black">
+              <h3 className="text-xl font-bold mb-2">MVP 🏆</h3>
+              <p className="text-lg font-semibold">
+                {result.mvp.name}{" "}
+                <span className="font-normal">
+                  ({`Team ${result.mvp.team}`})
+                </span>
+              </p>
+              <p className="text-sm italic mt-1">{result.mvp.reason}</p>
+            </div>
+
+            {/* Key Stats Tables */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Team A Stats */}
+              <div className="bg-white rounded-lg shadow p-4 text-black">
+                <h4 className="font-bold mb-2 text-center">Team A Stats</h4>
+                <table className="w-full text-left border border-gray-300 text-black">
+                  <tbody>
                     {Object.entries(result.keyStats.teamA).map(
                       ([stat, value]) => (
-                        <li key={stat}>
-                          {stat}: {value}
-                        </li>
+                        <tr
+                          key={stat}
+                          className="border-b border-gray-300 last:border-b-0 text-black hover:bg-gray-50"
+                        >
+                          <td className="px-2 py-1 font-medium text-black">
+                            {stat}
+                          </td>
+                          <td className="px-2 py-1 text-black">{value}</td>
+                        </tr>
                       )
                     )}
-                  </ul>
-                </div>
+                  </tbody>
+                </table>
+              </div>
 
-                {/* Team B */}
-                <div>
-                  <h4 className="font-semibold">Team B</h4>
-                  <ul className="list-disc list-inside">
+              {/* Team B Stats */}
+              <div className="bg-white rounded-lg shadow p-4 text-black">
+                <h4 className="font-bold mb-2 text-center">Team B Stats</h4>
+                <table className="w-full text-left border border-gray-300 text-black">
+                  <tbody>
                     {Object.entries(result.keyStats.teamB).map(
                       ([stat, value]) => (
-                        <li key={stat}>
-                          {stat}: {value}
-                        </li>
+                        <tr
+                          key={stat}
+                          className="border-b border-gray-300 last:border-b-0 text-black hover:bg-gray-50"
+                        >
+                          <td className="px-2 py-1 font-medium text-black">
+                            {stat}
+                          </td>
+                          <td className="px-2 py-1 text-black">{value}</td>
+                        </tr>
                       )
                     )}
-                  </ul>
-                </div>
+                  </tbody>
+                </table>
               </div>
             </div>
-            <p className="mt-2 italic text-gray-700">{result.reasoning}</p>
+
+            {/* Matchup Reasoning */}
+            <div className="p-4 bg-gray-100 rounded-lg text-left text-gray-800">
+              <h4 className="font-semibold mb-2">Matchup Analysis</h4>
+              <p className="italic">{result.reasoning}</p>
+            </div>
           </div>
         )}
       </div>
