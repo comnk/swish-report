@@ -100,7 +100,11 @@ export default function HotTakePage() {
             )}
 
             {username ? (
-              <CommentsSection take_id={hotTake.take_id} username={username} />
+              <CommentsSection
+                parentId={hotTake.take_id}
+                contextType="hot-take"
+                username={username}
+              />
             ) : (
               <p className="text-gray-500 mt-4">
                 Sign in to participate in the discussion.

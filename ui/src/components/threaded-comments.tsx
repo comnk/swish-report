@@ -4,13 +4,24 @@ import { useEffect, useState } from "react";
 
 type CommentType = {
   comment_id: number;
-  take_id: number;
+  parent_id: number;
   username: string;
   content: string;
   parent_comment_id?: number | null;
   created_at: string;
   replies: CommentType[];
 };
+
+interface CommentsSectionProps {
+  parentId: number;
+  contextType:
+    | "hot-take"
+    | "lineup"
+    | "hs-scouting"
+    | "college-scouting"
+    | "nba-scouting";
+  username: string;
+}
 
 function CommentItem({
   comment,
@@ -72,12 +83,10 @@ function CommentItem({
 }
 
 export default function CommentsSection({
-  take_id,
+  parentId,
+  contextType,
   username,
-}: {
-  take_id: number;
-  username: string;
-}) {
+}: CommentsSectionProps) {
   const [comments, setComments] = useState<CommentType[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
@@ -86,10 +95,10 @@ export default function CommentsSection({
   const fetchComments = async () => {
     try {
       const res = await fetch(
-        `http://localhost:8000/community/hot-takes/${take_id}/comments`
+        `http://localhost:8000/community/comments?parent_id=${parentId}&context_type=${contextType}`
       );
       if (!res.ok) throw new Error("Failed to fetch comments.");
-      const data = await res.json();
+      const data: CommentType[] = await res.json();
       setComments(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -101,26 +110,27 @@ export default function CommentsSection({
     content: string
   ) => {
     if (!content.trim()) return;
-
     setLoading(true);
     try {
-      const res = await fetch(
-        `http://localhost:8000/community/hot-takes/${take_id}/comments`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            take_id,
-            username,
-            content,
-            parent_comment_id,
-          }),
-        }
-      );
+      const payload = {
+        parent_id: parentId,
+        context_type: contextType,
+        username,
+        content,
+        parent_comment_id,
+      };
+
+      const res = await fetch(`http://localhost:8000/community/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.detail || "Failed to post comment.");
       }
+
       await fetchComments();
     } catch (err) {
       console.error(err);
@@ -132,7 +142,7 @@ export default function CommentsSection({
 
   useEffect(() => {
     fetchComments();
-  }, [take_id]);
+  }, [parentId, contextType]);
 
   return (
     <div className="mt-6">

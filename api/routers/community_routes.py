@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 from pydantic import BaseModel
@@ -16,21 +16,21 @@ class Lineup(BaseModel):
     players: Dict[str, Any]
     scouting_report: Dict[str, Any]
 
-
 class CommentCreate(BaseModel):
-    take_id: int
+    parent_id: int
     username: str
     content: str
     parent_comment_id: Optional[int] = None
+    context_type: str
 
 class Comment(BaseModel):
     comment_id: int
-    take_id: int
+    parent_id: int
     username: str
     content: str
     parent_comment_id: Optional[int]
     created_at: str
-    replies: list
+    replies: List['Comment'] = []
 
 
 @router.get("/lineups", response_model=List[Lineup])
@@ -178,51 +178,54 @@ def get_hot_take(take_id: int):
         if "conn" in locals():
             conn.close()
 
-@router.get("/hot-takes/{take_id}/comments", response_model=List[Comment])
-def get_comments(take_id: int):
+@router.get("/comments", response_model=List[Comment])
+def get_comments(parent_id: int = Query(...), context_type: str = Query(...)):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute(
-        "SELECT c.comment_id, c.take_id, u.username, c.content, "
+        "SELECT c.comment_id, c.parent_id, u.username, c.content, "
         "c.parent_comment_id, c.created_at "
         "FROM comments c JOIN users u ON c.user_id = u.user_id "
-        "WHERE c.take_id=%s ORDER BY c.created_at ASC",
-        (take_id,)
+        "WHERE c.parent_id=%s AND c.context_type=%s "
+        "ORDER BY c.created_at ASC",
+        (parent_id, context_type)
     )
     rows = cursor.fetchall()
     cursor.close()
     conn.close()
 
-    # Convert datetime to string
+    # Convert datetime to ISO string
     for row in rows:
-        if isinstance(row['created_at'], datetime):
-            row['created_at'] = row['created_at'].isoformat()
+        if isinstance(row["created_at"], datetime):
+            row["created_at"] = row["created_at"].isoformat()
 
     # Build threaded structure
-    comment_dict = {row['comment_id']: {**row, 'replies': []} for row in rows}
+    comment_dict = {row["comment_id"]: {**row, "replies": []} for row in rows}
     root_comments = []
 
     for comment in comment_dict.values():
-        parent_id = comment['parent_comment_id']
-        if parent_id is not None and parent_id in comment_dict:
-            comment_dict[parent_id]['replies'].append(comment)
+        parent_id_ = comment["parent_comment_id"]
+        if parent_id_ is not None and parent_id_ in comment_dict:
+            comment_dict[parent_id_]["replies"].append(comment)
         else:
             root_comments.append(comment)
 
     return root_comments
 
 
-@router.post("/hot-takes/{take_id}/comments", response_model=Comment)
-def create_comment(take_id: int, comment: CommentCreate):
+@router.post("/comments", response_model=Comment)
+def create_comment(comment: CommentCreate):
+    """
+    Create a comment for any content type.
+    """
     conn = None
     cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Get user_id and username from username
         cursor.execute(
-            "SELECT user_id, username FROM users WHERE username=%s",
+            "SELECT user_id FROM users WHERE username=%s",
             (comment.username,)
         )
         user_row = cursor.fetchone()
@@ -232,15 +235,22 @@ def create_comment(take_id: int, comment: CommentCreate):
 
         # Insert comment
         cursor.execute(
-            "INSERT INTO comments (take_id, user_id, content, parent_comment_id) VALUES (%s, %s, %s, %s)",
-            (take_id, user_id, comment.content, comment.parent_comment_id)
+            "INSERT INTO comments (parent_id, user_id, content, parent_comment_id, context_type) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (
+                comment.parent_id,
+                user_id,
+                comment.content,
+                comment.parent_comment_id,
+                comment.context_type,
+            )
         )
         conn.commit()
         comment_id = cursor.lastrowid
 
         # Fetch inserted comment
         cursor.execute(
-            "SELECT c.comment_id, c.take_id, c.content, c.parent_comment_id, c.created_at, u.username "
+            "SELECT c.comment_id, c.parent_id, c.content, c.parent_comment_id, c.created_at, u.username "
             "FROM comments c JOIN users u ON c.user_id = u.user_id "
             "WHERE c.comment_id=%s",
             (comment_id,)
@@ -248,7 +258,6 @@ def create_comment(take_id: int, comment: CommentCreate):
         new_comment = cursor.fetchone()
         new_comment["replies"] = []
 
-        # Convert datetime to string to match Pydantic model
         if new_comment.get("created_at"):
             new_comment["created_at"] = new_comment["created_at"].isoformat()
 
