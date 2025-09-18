@@ -1,6 +1,7 @@
 import { HighSchoolPlayer } from "@/types/player";
 import { notFound } from "next/navigation";
 import Navigation from "@/components/navigation";
+import CommentsWrapper from "@/components/comments-wrapper";
 import {
   MapPin,
   Calendar,
@@ -203,6 +204,17 @@ export default async function PlayerPage({ params }: { params: Params }) {
               </ul>
             </div>
           </div>
+
+          {/* Community Discussion */}
+          <section className="bg-white shadow rounded-lg p-6 space-y-4">
+            <h2 className="text-2xl font-semibold text-black">
+              Community Discussion
+            </h2>
+            <CommentsWrapper
+              parentId={Number(player.id)}
+              contextType="hs-scouting"
+            />
+          </section>
         </div>
       </div>
     </div>

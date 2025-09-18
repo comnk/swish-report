@@ -13,7 +13,7 @@ type CommentType = {
 };
 
 interface CommentsSectionProps {
-  parentId: number;
+  parentId: number | string;
   contextType:
     | "hot-take"
     | "lineup"

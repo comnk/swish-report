@@ -11,6 +11,7 @@ import {
   Target,
 } from "lucide-react";
 import Navigation from "@/components/navigation";
+import CommentsWrapper from "@/components/comments-wrapper";
 
 type Params = Promise<{ id: string }>;
 
@@ -327,6 +328,17 @@ export default async function PlayerPage({ params }: { params: Params }) {
               </div>
             </div>
           )}
+
+          {/* Community Discussion */}
+          <section className="bg-white shadow rounded-lg p-6 space-y-4">
+            <h2 className="text-2xl font-semibold text-black">
+              Community Discussion
+            </h2>
+            <CommentsWrapper
+              parentId={Number(player.id)}
+              contextType="nba-scouting"
+            />
+          </section>
         </div>
       </div>
     </div>

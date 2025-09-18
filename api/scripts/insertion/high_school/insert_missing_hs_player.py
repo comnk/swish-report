@@ -3,7 +3,7 @@ from scripts.scraping.fetch_individual_hs_player import fetch_247_data, fetch_es
 from utils.ai_generation_helpers import hs_ai_report_exists, parse_json_report, insert_report
 from scripts.insertion.ai_generation.insert_ai_generated_hs_reports import fetch_player_rankings
 
-from core.config import set_openai
+from core.config import set_gemini_key
 from utils.ai_prompts import SYSTEM_PROMPT, user_content
 
 import asyncio
@@ -67,7 +67,7 @@ async def insert_hs_player(full_name, sports247_link, espn_link, rivals_link):
     return {"status": "success", "player": full_name, "player_uid": player_uid}
 
 async def create_hs_player_analysis(player_uid):
-    client = set_openai()
+    client = set_gemini_key()
     cnx = get_db_connection()
     cursor = cnx.cursor()
     
@@ -96,7 +96,7 @@ async def create_hs_player_analysis(player_uid):
     ]
     
     response = client.chat.completions.create(
-        model="gpt-4o-search-preview",
+        model="gemini-2.5-flash",
         messages=messages,
     )
     

@@ -20,14 +20,6 @@ def set_google_oauth():
     
     return oauth
 
-def set_openai():
-    OPENAI_KEY = os.getenv('OPENAI_KEY')
-    if not OPENAI_KEY:
-        raise ValueError("OPENAI_KEY not found")
-    
-    client = OpenAI(api_key=OPENAI_KEY)
-    return client
-
 def set_youtube_key():
     YOUTUBE_KEY = os.getenv("YOUTUBE_KEY")
     youtube = build('youtube', 'v3', developerKey=YOUTUBE_KEY)

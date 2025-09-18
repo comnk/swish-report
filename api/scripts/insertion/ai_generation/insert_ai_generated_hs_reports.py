@@ -4,11 +4,11 @@ import concurrent.futures
 
 from datetime import datetime
 from core.db import get_db_connection
-from core.config import set_openai
+from core.config import set_gemini_key
 from utils.ai_prompts import SYSTEM_PROMPT, user_content
 from utils.ai_generation_helpers import fetch_players, parse_json_report, insert_report
 
-client = set_openai()
+client = set_gemini_key()
 
 select_sql = """
 SELECT p.player_uid, p.full_name, hspr.class_year, hspr.school_name FROM players AS p
@@ -62,7 +62,7 @@ def get_scouting_report_with_retry(player_name, class_year, high_school, ranking
     for attempt in range(retries):
         try:
             response = client.chat.completions.create(
-                model="gpt-4o-search-preview",
+                model="gemini-2.5-flash",
                 messages=messages,
             )
             return response.choices[0].message.content
