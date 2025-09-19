@@ -11,7 +11,7 @@ import {
   Target,
 } from "lucide-react";
 import Navigation from "@/components/navigation";
-import CommentsWrapper from "@/components/comments-wrapper";
+import CommentsWrapper from "@/components/comments/comments-wrapper";
 
 type Params = Promise<{ id: string }>;
 

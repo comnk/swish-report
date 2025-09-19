@@ -8,8 +8,8 @@ import {
   DragStartEvent,
 } from "@dnd-kit/core";
 import Navigation from "@/components/navigation";
-import LineupSlot from "@/components/lineup-builder-slot";
-import PlayerCard from "@/components/lineup-builder-card";
+import LineupSlot from "@/components/lineup-builder/lineup-builder-slot";
+import PlayerCard from "@/components/lineup-builder/lineup-builder-card";
 import { NBAPlayer } from "@/types/player";
 
 interface PlayerStats extends NBAPlayer {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Navigation from "@/components/navigation";
-import CommentsSection from "@/components/threaded-comments";
+import CommentsSection from "@/components/comments/threaded-comments";
 
 interface Lineup {
   lineup_id: number;

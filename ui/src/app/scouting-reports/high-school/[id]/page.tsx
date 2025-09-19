@@ -1,7 +1,8 @@
 import { HighSchoolPlayer } from "@/types/player";
+import GenerateHighlightButton from "@/components/generate-highlight-reel";
 import { notFound } from "next/navigation";
 import Navigation from "@/components/navigation";
-import CommentsWrapper from "@/components/comments-wrapper";
+import CommentsWrapper from "@/components/comments/comments-wrapper";
 import {
   MapPin,
   Calendar,
@@ -135,6 +136,9 @@ export default async function PlayerPage({ params }: { params: Params }) {
               </div>
             </div>
           </div>
+
+          {/* Highlight Reel Button */}
+          <GenerateHighlightButton player={player} />
 
           {/* Highlight Videos */}
           {videos.length > 0 && (

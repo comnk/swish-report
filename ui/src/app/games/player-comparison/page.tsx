@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Navigation from "@/components/navigation";
-import ComparisonBoard from "@/components/comparison-board";
+import ComparisonBoard from "@/components/lineup-builder/comparison-board";
 import {
   PlayerStats,
   ComparisonData,

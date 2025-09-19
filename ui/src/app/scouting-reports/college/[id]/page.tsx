@@ -1,4 +1,4 @@
-import CommentsWrapper from "@/components/comments-wrapper";
+import CommentsWrapper from "@/components/comments/comments-wrapper";
 import Navigation from "@/components/navigation";
 
 export default function CollegePlayer() {

@@ -1,14 +1,25 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from core.db import get_db_connection
-from utils.hs_helpers import get_youtube_videos
+from utils.hs_helpers import get_youtube_videos, high_school_highlights
+from utils.highlight_reel_helpers import download_youtube_video, extract_highlight_clips, save_highlight_clips, make_final_reel, cleanup_files
 from scripts.insertion.high_school.insert_missing_hs_player import insert_hs_player, create_hs_player_analysis
 from typing import List, Dict, Optional
-import json
+
+import json, os
 
 router = APIRouter()
 
 CACHE_EXPIRY_HOURS = 6
+
+DOWNLOAD_DIR = "downloads"
+TEMP_CLIP_DIR = "highlights"
+FINAL_DIR = "final_reels"
+
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+os.makedirs(TEMP_CLIP_DIR, exist_ok=True)
+os.makedirs(FINAL_DIR, exist_ok=True)
 
 class PlayerSubmission(BaseModel):
     name: str
@@ -137,7 +148,7 @@ def get_highschool_player(player_id: int):
             conn.close()
 
 @router.get("/prospects/{player_id}/videos")
-def get_high_school_player_videos(player_id: int, background_tasks: BackgroundTasks):
+def get_high_school_player_videos(player_id: int):
     select_sql = """
         SELECT full_name, class_year
         FROM players
@@ -195,6 +206,70 @@ def get_high_school_player_videos(player_id: int, background_tasks: BackgroundTa
             cursor.close()
         if 'conn' in locals():
             conn.close()
+            
+
+@router.get("/prospects/{player_id}/reel")
+def get_high_school_player_reel(player_id: int, background_tasks: BackgroundTasks):
+    select_sql = """
+        SELECT full_name, class_year
+        FROM players
+        WHERE player_uid = %s
+        AND class_year IS NOT NULL;
+    """
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Step 1: Get player info
+        cursor.execute(select_sql, (player_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Player not found")
+
+        full_name = row["full_name"]
+        class_year = row["class_year"]
+
+        # Step 2: Fetch YouTube videos
+        urls = high_school_highlights(full_name, class_year)
+        if not urls:
+            raise HTTPException(status_code=404, detail="No videos found for this player.")
+
+        intermediate_clips = []
+
+        # Step 3: Process each video
+        for url in urls:
+            video_path = download_youtube_video(url, output_dir=DOWNLOAD_DIR)
+            segments = extract_highlight_clips(video_path, top_k=3)
+            clips = save_highlight_clips(video_path, segments, output_dir=TEMP_CLIP_DIR)
+            intermediate_clips.extend(clips)
+
+            # Cleanup full downloaded video in background
+            background_tasks.add_task(cleanup_files, [video_path])
+
+        if not intermediate_clips:
+            raise HTTPException(status_code=404, detail="No highlight clips could be generated.")
+
+        # Step 4: Create final highlight reel
+        final_filename = f"{full_name.replace(' ', '_')}_highlight.mp4"
+        final_path = os.path.join(FINAL_DIR, final_filename)
+        make_final_reel(intermediate_clips, output_path=final_path, cleanup=True)
+
+        # Step 5: Return final video
+        return FileResponse(final_path, filename=final_filename, media_type="video/mp4")
+
+    except Exception as e:
+        import traceback
+        print("🔥 Highlight reel error:", str(e))
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Internal server error generating highlight reel")
+
+    finally:
+        if "cursor" in locals():
+            cursor.close()
+        if "conn" in locals():
+            conn.close()
+
 
 def refresh_player_videos(player_id: int, full_name: str, class_year: int):
     """Background task to refresh YouTube videos cache."""
@@ -219,6 +294,7 @@ def refresh_player_videos(player_id: int, full_name: str, class_year: int):
     finally:
         if 'cursor' in locals(): cursor.close()
         if 'conn' in locals(): conn.close()
+
 
 @router.post("/prospects/submit-player", response_model=Dict)
 async def submit_high_school_player(submission: PlayerSubmission):
@@ -246,5 +322,5 @@ async def submit_high_school_player(submission: PlayerSubmission):
         }
     except Exception as e:
         import traceback
-        print(traceback.format_exc())  # log full error
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
