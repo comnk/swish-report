@@ -2,12 +2,12 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from core.db import get_db_connection
-from utils.hs_helpers import get_youtube_videos, high_school_highlights
-from utils.highlight_reel_helpers import download_youtube_video, extract_highlight_clips, save_highlight_clips, make_final_reel, cleanup_files
+from utils.hs_helpers import get_youtube_videos
+from utils.highlight_reel_helpers import generate_high_school_highlights, make_final_reel
 from scripts.insertion.high_school.insert_missing_hs_player import insert_hs_player, create_hs_player_analysis
 from typing import List, Dict, Optional
 
-import json, os
+import json, os, random, traceback
 
 router = APIRouter()
 
@@ -216,59 +216,37 @@ def get_high_school_player_reel(player_id: int, background_tasks: BackgroundTask
         WHERE player_uid = %s
         AND class_year IS NOT NULL;
     """
-
+    conn, cursor = None, None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-
-        # Step 1: Get player info
         cursor.execute(select_sql, (player_id,))
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Player not found")
+        full_name, class_year = row["full_name"], row["class_year"]
 
-        full_name = row["full_name"]
-        class_year = row["class_year"]
+        # --- generate highlights across multiple videos ---
+        try:
+            clips = generate_high_school_highlights(full_name, class_year, max_videos=5, top_k_per_video=3)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
 
-        # Step 2: Fetch YouTube videos
-        urls = high_school_highlights(full_name, class_year)
-        if not urls:
-            raise HTTPException(status_code=404, detail="No videos found for this player.")
-
-        intermediate_clips = []
-
-        # Step 3: Process each video
-        for url in urls:
-            video_path = download_youtube_video(url, output_dir=DOWNLOAD_DIR)
-            segments = extract_highlight_clips(video_path, top_k=3)
-            clips = save_highlight_clips(video_path, segments, output_dir=TEMP_CLIP_DIR)
-            intermediate_clips.extend(clips)
-
-            # Cleanup full downloaded video in background
-            background_tasks.add_task(cleanup_files, [video_path])
-
-        if not intermediate_clips:
-            raise HTTPException(status_code=404, detail="No highlight clips could be generated.")
-
-        # Step 4: Create final highlight reel
-        final_filename = f"{full_name.replace(' ', '_')}_highlight.mp4"
+        final_filename = f"{full_name.replace(' ', '_')}_{random.randint(1000,9999)}_highlight.mp4"
         final_path = os.path.join(FINAL_DIR, final_filename)
-        make_final_reel(intermediate_clips, output_path=final_path, cleanup=True)
+        make_final_reel(clips, output_path=final_path)
 
-        # Step 5: Return final video
         return FileResponse(final_path, filename=final_filename, media_type="video/mp4")
 
+    except HTTPException:
+        raise
     except Exception as e:
-        import traceback
         print("🔥 Highlight reel error:", str(e))
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Internal server error generating highlight reel")
-
     finally:
-        if "cursor" in locals():
-            cursor.close()
-        if "conn" in locals():
-            conn.close()
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 
 def refresh_player_videos(player_id: int, full_name: str, class_year: int):

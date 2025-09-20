@@ -1,13 +1,18 @@
-from utils.hs_helpers import high_school_highlights
+from core.config import set_youtube_key
 
 import os
+import random
+import isodate
 import subprocess
 import cv2
 import numpy as np
 from scenedetect import open_video, SceneManager
 from scenedetect.detectors import ContentDetector
-from moviepy import *
+from rapidfuzz import fuzz
 from typing import List
+
+from PIL import Image
+import imagehash
 
 DOWNLOAD_DIR = "downloads"
 TEMP_CLIP_DIR = "highlights"
@@ -104,10 +109,7 @@ def detect_scenes(video_path: str, threshold: float = 27.0):
 # Motion scoring (weighted by scene length)
 # -------------------------------
 def motion_score(video_path: str, start: float, end: float, sample_rate: int = 5) -> float:
-    """
-    Compute average motion score of a video segment.
-    Weighted by scene duration for prioritizing longer, active highlights.
-    """
+    """Compute average motion score of a video segment."""
     cap = cv2.VideoCapture(video_path)
     cap.set(cv2.CAP_PROP_POS_MSEC, start * 1000)
 
@@ -132,16 +134,13 @@ def motion_score(video_path: str, start: float, end: float, sample_rate: int = 5
         prev_gray = gray
 
     cap.release()
-
-    avg_score = score / max(frames, 1)
-    # Weight by scene duration to prioritize longer, active scenes
-    weighted_score = avg_score * (end - start)
-    return weighted_score
+    return score / max(frames, 1)
 
 
 # -------------------------------
 # Extract highlight scenes
 # -------------------------------
+
 def extend_scene_to_motion_end(video_path: str, start: float, end: float, max_extend: float = 3.0, threshold: float = 5.0):
     """Extend the end of a scene until motion drops below threshold."""
     cap = cv2.VideoCapture(video_path)
@@ -234,80 +233,184 @@ def is_valid_mp4(file_path: str) -> bool:
 def save_highlight_clips(video_path: str, segments, output_dir=TEMP_CLIP_DIR) -> List[str]:
     os.makedirs(output_dir, exist_ok=True)
     saved_paths = []
-
-    if not is_valid_mp4(video_path):
-        print(f"⚠️ Skipping invalid video: {video_path}")
-        return []
-
-    try:
-        video = VideoFileClip(video_path)
-    except Exception as e:
-        print(f"⚠️ MoviePy could not open video {video_path}: {e}")
-        return []
-
-    duration = video.duration
     base = os.path.splitext(os.path.basename(video_path))[0]
 
     for i, (start, end) in enumerate(segments):
         try:
-            safe_end = min(end, duration)
             out_path = os.path.join(output_dir, f"{base}_clip_{i+1}.mp4")
-            clip = video.subclipped(start, safe_end)
-            clip.write_videofile(out_path, codec="libx264", logger=None)
-            clip.close()
 
-            # Optional: remux each clip to fix MP4 header issues
-            remuxed_path = out_path.replace(".mp4", "_fixed.mp4")
+            # ✅ Re-encode for stable timestamps + CFR
             subprocess.run([
-                "ffmpeg", "-i", out_path, "-c", "copy", remuxed_path, "-y"
+                "ffmpeg",
+                "-ss", str(start), "-to", str(end),
+                "-i", video_path,
+                "-c:v", "libx264", "-preset", "fast", "-crf", "23",  # re-encode video
+                "-c:a", "aac", "-b:a", "128k",                       # re-encode audio
+                "-r", "30", "-vsync", "cfr",                        # force constant frame rate
+                "-y", out_path
             ], check=True)
-            os.remove(out_path)  # replace original
-            saved_paths.append(remuxed_path)
 
+            saved_paths.append(out_path)
         except Exception as e:
             print(f"⚠️ Failed to save clip {i+1} from {video_path}: {e}")
 
-    video.close()
     return saved_paths
 
 
 # -------------------------------
 # Generate HS highlights
 # -------------------------------
-def generate_high_school_highlights(full_name: str, class_year: str, max_videos=1, top_k=3) -> List[str]:
+
+def high_school_highlights(full_name: str, class_year: str, max_videos: int = 6) -> List[str]:
+    """
+    Fetch diverse YouTube video URLs for a HS basketball player.
+    Looser filtering: allows partial matches, prefers diversity in titles.
+    """
+    youtube = set_youtube_key()
+    search_request = youtube.search().list(
+        part="snippet",
+        maxResults=25,
+        q=f"{full_name} basketball {class_year}",
+        type="video",
+        videoEmbeddable="true",
+    )
+    search_response = search_request.execute()
+
+    candidate_videos = []
+    for item in search_response.get("items", []):
+        video_id = item["id"]["videoId"]
+        title = item["snippet"]["title"].lower()
+
+        # Compute multiple fuzzy scores
+        score_name = fuzz.partial_ratio(full_name.lower(), title)
+        score_last = fuzz.partial_ratio(full_name.split()[-1].lower(), title)
+        score_combo = max(score_name, score_last)
+
+        if score_combo >= 30:  # looser threshold
+            candidate_videos.append((score_combo, video_id, title))
+
+    if not candidate_videos:
+        return []
+
+    # Sort by score, but also randomize within bins to avoid only top-1
+    candidate_videos.sort(key=lambda x: x[0], reverse=True)
+    seen_titles = set()
+    selected = []
+    for _, vid_id, title in candidate_videos:
+        if title not in seen_titles:  # crude diversity filter
+            selected.append(f"https://www.youtube.com/watch?v={vid_id}")
+            seen_titles.add(title)
+        if len(selected) >= max_videos:
+            break
+
+    return selected
+
+
+def generate_high_school_highlights(full_name: str, class_year: str, max_videos=6, top_k_per_video=3) -> List[str]:
     urls = high_school_highlights(full_name, class_year, max_videos=max_videos)
     if not urls:
         raise ValueError("No videos found for this player.")
 
-    clips = []
+    all_clips: List[str] = []
+
     for url in urls:
+        video_path = None
         try:
-            video_path = download_youtube_video(url)
-            segments = extract_highlight_clips(video_path, top_k=top_k)
-            clips.extend(save_highlight_clips(video_path, segments, output_dir=TEMP_CLIP_DIR))
+            video_path = download_youtube_video(url, output_dir=DOWNLOAD_DIR)
+            duration = get_duration(video_path)
+            avg_motion = motion_score(video_path, 0, min(30, duration))
+
+            # Only skip if *completely dead*, not just low motion
+            if avg_motion < 0.05:
+                print(f"⚠️ Skipping dead video: {url}")
+                cleanup_files([video_path])
+                continue
+
+            segments = extract_highlight_clips(video_path, top_k=top_k_per_video)
+
+            # Guarantee at least one segment per video
+            if not segments and duration > 2:
+                segments = [(0, min(5, duration))]
+
+            clips = save_highlight_clips(video_path, segments, output_dir=TEMP_CLIP_DIR)
+            all_clips.extend(clips)
+
+            cleanup_files([video_path])
+
         except Exception as e:
-            print(f"⚠️ Skipping video {url} due to error: {e}")
-    return clips
+            print(f"⚠️ Error processing {url}: {e}")
+            if video_path:
+                cleanup_files([video_path])
+
+    # Deduplicate only exact duplicates, not near-duplicates
+    unique_clips = list(dict.fromkeys(all_clips))
+    random.shuffle(unique_clips)
+
+    if not unique_clips:
+        raise ValueError("No valid highlight clips found for this player.")
+
+    return unique_clips
+
 
 # -------------------------------
 # Concatenate clips into final reel
 # -------------------------------
-def make_final_reel(clips: List[str], output_path=os.path.join(FINAL_DIR, "final_reel.mp4"), cleanup=True) -> str:
-    video_clips = [VideoFileClip(c) for c in clips]
-    final = concatenate_videoclips(video_clips, method="compose")
-    final.write_videofile(output_path, codec="libx264", logger=None)
-    for clip in video_clips:
-        clip.close()
-    final.close()
+def make_final_reel(clips: List[str], output_path: str) -> str:
+    if not clips:
+        raise ValueError("No clips provided.")
 
-    if cleanup:
-        for c in clips:
-            try:
-                os.remove(c)
-            except Exception as e:
-                print(f"⚠️ Could not delete {c}: {e}")
+    inputs = []
+    filters = []
+    xfade_cmds = []
 
+    # Input streams
+    for i, clip in enumerate(clips):
+        inputs.extend(["-i", clip])
+        filters.append(
+            f"[{i}:v]scale=1280:720,setsar=1[v{i}];"
+            f"[{i}:a]aformat=sample_fmts=s16p:sample_rates=44100:channel_layouts=stereo[a{i}]"
+        )
+
+    # --- Dynamic offsets ---
+    offsets = []
+    cur_time = 0
+    for i, clip in enumerate(clips[:-1]):  # skip last
+        dur = get_duration(clip)
+        # offset for xfade: duration minus half fade (0.5s)
+        cur_time += max(0.5, dur - 0.5)
+        offsets.append(cur_time)
+
+    # --- Build xfade/acrossfade chain ---
+    last_v, last_a = "[v0]", "[a0]"
+    for i in range(1, len(clips)):
+        offset = offsets[i - 1]
+        xfade_cmds.append(
+            f"{last_v}[v{i}]xfade=transition=fade:duration=0.5:offset={offset}[v{i}out];"
+            f"{last_a}[a{i}]acrossfade=d=0.5[a{i}out]"
+        )
+        last_v, last_a = f"[v{i}out]", f"[a{i}out]"
+
+    filter_complex = ";".join(filters + xfade_cmds)
+
+    cmd = [
+        "ffmpeg", "-y",
+        *inputs,
+        "-filter_complex", filter_complex,
+        "-map", last_v, "-map", last_a,
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",        # force compatible pixel format
+        "-crf", "23",
+        "-preset", "fast",
+        "-c:a", "aac",
+        "-b:a", "192k",               # explicit audio bitrate
+        "-shortest",                  # in case audio/video mismatch
+        output_path
+    ]
+
+    subprocess.run(cmd, check=True)
     return output_path
+
+
 
 # -------------------------------
 # Cleanup helper
@@ -318,3 +421,32 @@ def cleanup_files(files: List[str]):
             os.remove(f)
         except Exception as e:
             print(f"⚠️ Could not delete {f}: {e}")
+            
+def get_duration(video_path):
+    result = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", 
+        "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", video_path],
+        capture_output=True, text=True
+    )
+    return float(result.stdout)
+
+# --- Step 4: deduplicate by frame similarity ---
+def is_duplicate_clip(clip_a: str, clip_b: str, hash_size=8, threshold=5) -> bool:
+    cap_a, cap_b = cv2.VideoCapture(clip_a), cv2.VideoCapture(clip_b)
+    ret_a, frame_a = cap_a.read()
+    ret_b, frame_b = cap_b.read()
+    cap_a.release(); cap_b.release()
+    if not (ret_a and ret_b):
+        return False
+    img_a = Image.fromarray(cv2.cvtColor(frame_a, cv2.COLOR_BGR2RGB))
+    img_b = Image.fromarray(cv2.cvtColor(frame_b, cv2.COLOR_BGR2RGB))
+    hash_a = imagehash.average_hash(img_a, hash_size=hash_size)
+    hash_b = imagehash.average_hash(img_b, hash_size=hash_size)
+    return hash_a - hash_b <= threshold
+
+def deduplicate_clips(clips: List[str]) -> List[str]:
+    unique_clips = []
+    for clip in clips:
+        if all(not is_duplicate_clip(clip, existing) for existing in unique_clips):
+            unique_clips.append(clip)
+    return unique_clips

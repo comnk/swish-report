@@ -107,3 +107,4 @@ scenedetect
 moviepy
 numpy
 isodate
+imagehash
