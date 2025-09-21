@@ -380,7 +380,6 @@ def high_school_highlights(full_name: str, class_year: str, max_videos: int = 15
     query_variants = [
         f"{full_name} basketball {class_year}",
         f"{full_name} basketball highlights {class_year}",
-        f"{full_name} hoops mixtape {class_year}",
         f"{full_name} class of {class_year} basketball",
         f"{full_name} class of {class_year} basketball camp",
         f"{full_name} class of {class_year} camp highlights",
@@ -388,18 +387,18 @@ def high_school_highlights(full_name: str, class_year: str, max_videos: int = 15
     query = random.choice(query_variants)
 
     exclude_keywords = [
-        "interview", "press conference", "announcement", "commitment", "docuseries", "mic", "mic'd"
-        "speaks", "talks", "podcast", "intro", "recap", "analysis", "one-on-one", "Interview", "story",
-        f"{full_name.lower()}:", "recruitment"
+        "interview", "press conference", "announcement", "commitment", "docuseries",
+        "mic", "mic'd", "speaks", "talks", "podcast", "intro", "recap", "analysis",
+        "one-on-one", "interview", "story", f"{full_name.lower()}:", "recruitment",
+        "recruiting", "tryout", "invite", "breakdown"
     ]
-    full_game_keywords = [
-        "full game", "vs", "v.", "replay", "preview", "matchup", "team"
-    ]
+    full_game_keywords = ["vs", "v.", "replay", "preview", "matchup", "team"]
 
-    # Collect across multiple pages to diversify results
     candidate_videos = []
+    highlight_videos = []  # ✅ force-included if title contains "highlights"
+
     next_page_token = None
-    for _ in range(3):  # fetch up to 3 pages (can tune)
+    for _ in range(3):  # fetch up to 3 pages
         search_request = youtube.search().list(
             part="snippet",
             maxResults=50,
@@ -425,29 +424,44 @@ def high_school_highlights(full_name: str, class_year: str, max_videos: int = 15
                 continue
 
             score_name = fuzz.partial_ratio(full_name.lower(), title)
-            candidate_videos.append((score_name, video_id, title))
+
+            # ✅ If "highlights" in title, mark for guaranteed inclusion
+            if "highlights" in title:
+                highlight_videos.append((score_name, video_id, title))
+            else:
+                candidate_videos.append((score_name, video_id, title))
 
         if not next_page_token:
-            break  # no more pages
+            break
 
-    if not candidate_videos:
+    if not (candidate_videos or highlight_videos):
         return []
 
     # Add randomness that changes per run
     random.seed(time.time())
 
-    # Shuffle and sample
+    # Weighted random for non-highlight vids
     random.shuffle(candidate_videos)
     weights = [max(score, 1) for score, _, _ in candidate_videos]
     chosen = random.choices(
         candidate_videos,
         weights=weights,
-        k=min(max_videos * 4, len(candidate_videos))  # sample bigger pool
+        k=min(max_videos * 4, len(candidate_videos))
     )
 
-    # Deduplicate and limit
+    # ✅ Dedup + merge (highlight videos always included first)
     seen = set()
     selected = []
+
+    # Force-included highlight videos
+    for _, vid_id, _ in highlight_videos:
+        if vid_id not in seen:
+            selected.append(f"https://www.youtube.com/watch?v={vid_id}")
+            seen.add(vid_id)
+        if len(selected) >= max_videos:
+            return selected
+
+    # Fill remaining slots from weighted sample
     for _, vid_id, _ in chosen:
         if vid_id not in seen:
             selected.append(f"https://www.youtube.com/watch?v={vid_id}")
@@ -456,6 +470,7 @@ def high_school_highlights(full_name: str, class_year: str, max_videos: int = 15
             break
 
     return selected
+
 
 def generate_high_school_highlights(full_name: str, class_year: str, max_videos=15, top_k_per_video=3) -> List[str]:
     urls = high_school_highlights(full_name, class_year, max_videos=max_videos)
