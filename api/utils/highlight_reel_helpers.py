@@ -1,13 +1,15 @@
 from core.config import set_youtube_key
 
 import os
+import time
 import random
-import isodate
 import subprocess
 import cv2
 import numpy as np
 from scenedetect import open_video, SceneManager
 from scenedetect.detectors import ContentDetector
+from pydub import AudioSegment
+from scenedetect.stats_manager import StatsManager
 from rapidfuzz import fuzz
 from typing import List
 
@@ -99,18 +101,70 @@ def download_youtube_video(url: str, output_dir: str = DOWNLOAD_DIR) -> str:
 def detect_scenes(video_path: str, threshold: float = 27.0):
     """Detect scenes in a video using content detection."""
     video = open_video(video_path)
-    scene_manager = SceneManager()
+    scene_manager = SceneManager(stats_manager=StatsManager())
     scene_manager.add_detector(ContentDetector(threshold=threshold))
-    scene_manager.detect_scenes(video)
-    return [(start.get_seconds(), end.get_seconds()) for start, end in scene_manager.get_scene_list()]
+    scene_manager.detect_scenes(video=video)
+    scene_list = scene_manager.get_scene_list()
 
+    return [(start.get_seconds(), end.get_seconds()) for start, end in scene_list]
+
+def detect_audio_spikes(video_path: str, window_ms: int = 500, threshold: float = 1.5):
+    audio = AudioSegment.from_file(video_path)
+    samples = np.array(audio.get_array_of_samples())
+    samples = samples.astype(np.float32) / (2**15)  # normalize
+
+    # RMS per window
+    step = int(window_ms * audio.frame_rate / 1000)
+    rms_values = [np.sqrt(np.mean(samples[i:i+step]**2)) for i in range(0, len(samples), step)]
+    mean_rms = np.mean(rms_values)
+
+    # Spike timestamps in seconds
+    spikes = [i * (window_ms/1000) for i, rms in enumerate(rms_values) if rms > mean_rms * threshold]
+    return spikes
 
 # -------------------------------
 # Motion scoring (weighted by scene length)
 # -------------------------------
-def motion_score(video_path: str, start: float, end: float, sample_rate: int = 5) -> float:
-    """Compute average motion score of a video segment."""
+def motion_density(video_path: str, start: float, end: float, sample_rate: int = 5, motion_thresh: float = 20):
     cap = cv2.VideoCapture(video_path)
+    cap.set(cv2.CAP_PROP_POS_MSEC, start * 1000)
+    ret, prev = cap.read()
+    if not ret:
+        cap.release()
+        return 0.0
+    prev_gray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
+    frames = 0
+    density_sum = 0.0
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30
+    step = int(max(1, fps // sample_rate))
+    
+    while cap.get(cv2.CAP_PROP_POS_MSEC) < end * 1000:
+        for _ in range(step):
+            ret, frame = cap.read()
+            if not ret:
+                break
+        if not ret:
+            break
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        diff = cv2.absdiff(prev_gray, gray)
+        density = np.sum(diff > motion_thresh) / diff.size  # fraction of moving pixels
+        density_sum += density
+        frames += 1
+        prev_gray = gray
+    
+    cap.release()
+    return density_sum / max(frames, 1)
+
+def motion_score(video_path: str, start: float, end: float, sample_rate: int = 5) -> float:
+    """
+    Compute average motion score of a video segment.
+    Uses frame differences at a fixed sampling interval.
+    """
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return 0.0
+
+    # Seek to start time
     cap.set(cv2.CAP_PROP_POS_MSEC, start * 1000)
 
     ret, prev = cap.read()
@@ -120,21 +174,33 @@ def motion_score(video_path: str, start: float, end: float, sample_rate: int = 5
     prev_gray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
 
     score, frames = 0.0, 0
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30
+    step = int(max(1, fps // sample_rate))  # sample every N frames
+
     while cap.get(cv2.CAP_PROP_POS_MSEC) < end * 1000:
-        for _ in range(sample_rate):
+        # Skip ahead by step frames
+        for _ in range(step):
             ret, frame = cap.read()
             if not ret:
                 break
         if not ret:
             break
+
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         diff = cv2.absdiff(prev_gray, gray)
-        score += np.sum(diff) / diff.size
+        score += np.mean(diff)  # normalized per pixel
         frames += 1
         prev_gray = gray
 
     cap.release()
     return score / max(frames, 1)
+
+def score_scene(video_path: str, start: float, end: float, audio_spikes: list):
+    motion = motion_score(video_path, start, end)
+    density = motion_density(video_path, start, end)
+    audio_bonus = 1.0 if any(start <= spike <= end for spike in audio_spikes) else 0.0
+    # weighted sum: density helps filter intros/interviews
+    return motion * 0.7 + density * 0.5 + audio_bonus * 0.5
 
 
 # -------------------------------
@@ -177,8 +243,17 @@ def extract_highlight_clips(
     top_k: int = 3,
     min_len: int = 3,
     max_len: int = 12,
-    pad_before: float = 0.3
+    pad_before: float = 0.3,
+    early_skip: float = 10.0,       # skip first 10s by default
+    motion_thresh: float = 20,      # pixel difference threshold for motion density
 ):
+    """
+    Extract top-k highlight clips from a video.
+    Filters out low-density motion and early non-game sections.
+    """
+    # Precompute audio spikes
+    audio_spikes = detect_audio_spikes(video_path)
+
     scenes = detect_scenes(video_path)
     scored_scenes = []
 
@@ -186,8 +261,14 @@ def extract_highlight_clips(
         duration = end - start
         if duration < min_len:
             continue
+        if end < early_skip:  # skip very early non-game scenes
+            continue
 
-        score = motion_score(video_path, start, end)
+        # Weighted score: motion + motion density + audio spikes
+        motion = motion_score(video_path, start, end)
+        density = motion_density(video_path, start, end, motion_thresh=motion_thresh)
+        audio_bonus = 1.0 if any(start <= spike <= end for spike in audio_spikes) else 0.0
+        score = motion * 0.7 + density * 0.5 + audio_bonus * 0.5
 
         # Dynamic extension to avoid cutting off shots
         extended_end = extend_scene_to_motion_end(video_path, start, end, max_extend=max_len - duration)
@@ -197,10 +278,10 @@ def extract_highlight_clips(
 
         scored_scenes.append(((seg_start, seg_end), score))
 
-    # Sort by score
+    # Sort scenes by score descending
     scored_scenes.sort(key=lambda x: x[1], reverse=True)
 
-    # Pick top_k non-overlapping
+    # Pick top_k non-overlapping segments
     final_segments = []
     for (seg_start, seg_end), _ in scored_scenes:
         if any(seg_start < existing_end and seg_end > existing_start
@@ -211,6 +292,7 @@ def extract_highlight_clips(
             break
 
     return final_segments
+
 
 # -------------------------------
 # Save highlight clips
@@ -260,53 +342,92 @@ def save_highlight_clips(video_path: str, segments, output_dir=TEMP_CLIP_DIR) ->
 # -------------------------------
 # Generate HS highlights
 # -------------------------------
-
-def high_school_highlights(full_name: str, class_year: str, max_videos: int = 6) -> List[str]:
-    """
-    Fetch diverse YouTube video URLs for a HS basketball player.
-    Looser filtering: allows partial matches, prefers diversity in titles.
-    """
+def high_school_highlights(full_name: str, class_year: str, max_videos: int = 15) -> List[str]:
     youtube = set_youtube_key()
-    search_request = youtube.search().list(
-        part="snippet",
-        maxResults=25,
-        q=f"{full_name} basketball {class_year}",
-        type="video",
-        videoEmbeddable="true",
-    )
-    search_response = search_request.execute()
 
+    # Rotate queries for more variety
+    query_variants = [
+        f"{full_name} basketball {class_year}",
+        f"{full_name} basketball highlights {class_year}",
+        f"{full_name} hoops mixtape {class_year}",
+        f"{full_name} class of {class_year} basketball",
+        f"{full_name} class of {class_year} basketball camp",
+        f"{full_name} class of {class_year} camp highlights",
+    ]
+    query = random.choice(query_variants)
+
+    exclude_keywords = [
+        "interview", "press conference", "announcement", "commitment",
+        "speaks", "talks", "podcast", "intro", "recap", "analysis", "one-on-one"
+    ]
+    full_game_keywords = [
+        "full game", "vs", "v.", "replay", "preview", "matchup", "team"
+    ]
+
+    # Collect across multiple pages to diversify results
     candidate_videos = []
-    for item in search_response.get("items", []):
-        video_id = item["id"]["videoId"]
-        title = item["snippet"]["title"].lower()
+    next_page_token = None
+    for _ in range(3):  # fetch up to 3 pages (can tune)
+        search_request = youtube.search().list(
+            part="snippet",
+            maxResults=50,
+            q=query,
+            type="video",
+            videoEmbeddable="true",
+            pageToken=next_page_token
+        )
+        search_response = search_request.execute()
+        next_page_token = search_response.get("nextPageToken")
 
-        # Compute multiple fuzzy scores
-        score_name = fuzz.partial_ratio(full_name.lower(), title)
-        score_last = fuzz.partial_ratio(full_name.split()[-1].lower(), title)
-        score_combo = max(score_name, score_last)
+        for item in search_response.get("items", []):
+            video_id = item["id"]["videoId"]
+            snippet = item["snippet"]
+            title = snippet["title"].lower()
+            description = snippet.get("description", "").lower()
 
-        if score_combo >= 30:  # looser threshold
-            candidate_videos.append((score_combo, video_id, title))
+            if full_name.lower() not in (title + description):
+                continue
+            if any(kw in title or kw in description for kw in exclude_keywords):
+                continue
+            if any(kw in title for kw in full_game_keywords):
+                continue
+
+            score_name = fuzz.partial_ratio(full_name.lower(), title)
+            candidate_videos.append((score_name, video_id, title))
+
+        if not next_page_token:
+            break  # no more pages
 
     if not candidate_videos:
         return []
 
-    # Sort by score, but also randomize within bins to avoid only top-1
-    candidate_videos.sort(key=lambda x: x[0], reverse=True)
-    seen_titles = set()
+    # Add randomness that changes per run
+    random.seed(time.time())
+
+    # Shuffle and sample
+    random.shuffle(candidate_videos)
+    weights = [max(score, 1) for score, _, _ in candidate_videos]
+    chosen = random.choices(
+        candidate_videos,
+        weights=weights,
+        k=min(max_videos * 4, len(candidate_videos))  # sample bigger pool
+    )
+
+    # Deduplicate and limit
+    seen = set()
     selected = []
-    for _, vid_id, title in candidate_videos:
-        if title not in seen_titles:  # crude diversity filter
+    for _, vid_id, _ in chosen:
+        if vid_id not in seen:
             selected.append(f"https://www.youtube.com/watch?v={vid_id}")
-            seen_titles.add(title)
+            seen.add(vid_id)
         if len(selected) >= max_videos:
             break
 
     return selected
 
 
-def generate_high_school_highlights(full_name: str, class_year: str, max_videos=6, top_k_per_video=3) -> List[str]:
+
+def generate_high_school_highlights(full_name: str, class_year: str, max_videos=15, top_k_per_video=3) -> List[str]:
     urls = high_school_highlights(full_name, class_year, max_videos=max_videos)
     if not urls:
         raise ValueError("No videos found for this player.")
@@ -318,9 +439,9 @@ def generate_high_school_highlights(full_name: str, class_year: str, max_videos=
         try:
             video_path = download_youtube_video(url, output_dir=DOWNLOAD_DIR)
             duration = get_duration(video_path)
-            avg_motion = motion_score(video_path, 0, min(30, duration))
 
-            # Only skip if *completely dead*, not just low motion
+            # Quick early check for dead videos (first 10 seconds)
+            avg_motion = motion_score(video_path, 0, min(10, duration))
             if avg_motion < 0.05:
                 print(f"⚠️ Skipping dead video: {url}")
                 cleanup_files([video_path])
@@ -342,8 +463,8 @@ def generate_high_school_highlights(full_name: str, class_year: str, max_videos=
             if video_path:
                 cleanup_files([video_path])
 
-    # Deduplicate only exact duplicates, not near-duplicates
-    unique_clips = list(dict.fromkeys(all_clips))
+    # Deduplicate by near-duplicate frames (optional)
+    unique_clips = deduplicate_clips(all_clips)
     random.shuffle(unique_clips)
 
     if not unique_clips:

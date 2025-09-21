@@ -108,3 +108,4 @@ moviepy
 numpy
 isodate
 imagehash
+pydub
