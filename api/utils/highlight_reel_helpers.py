@@ -206,34 +206,53 @@ def score_scene(video_path: str, start: float, end: float, audio_spikes: list):
 # -------------------------------
 # Extract highlight scenes
 # -------------------------------
-
-def extend_scene_to_motion_end(video_path: str, start: float, end: float, max_extend: float = 3.0, threshold: float = 5.0):
-    """Extend the end of a scene until motion drops below threshold."""
+def extend_scene_to_motion_end(
+    video_path: str,
+    start: float,
+    end: float,
+    max_extend: float = 3.0,
+    motion_thresh: float = 5.0,
+    cooldown_frames: int = 10,
+    audio_spikes: list = None,
+):
+    """Extend scene end until motion/audio both drop below threshold."""
     cap = cv2.VideoCapture(video_path)
     cap.set(cv2.CAP_PROP_POS_MSEC, end * 1000)
-    
+
     ret, prev = cap.read()
     if not ret:
         cap.release()
         return end
 
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_time = 1 / fps
     prev_gray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
-    frame_time = 1 / cap.get(cv2.CAP_PROP_FPS)
+
     total_extend = 0.0
+    low_motion_streak = 0
 
     while total_extend < max_extend:
         ret, frame = cap.read()
         if not ret:
             break
+
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         diff = np.sum(cv2.absdiff(prev_gray, gray)) / gray.size
+        prev_gray = gray
 
-        # stop extending if motion drops below threshold
-        if diff < threshold:
+        # Check if there's an audio spike near this timestamp
+        cur_time = end + total_extend
+        has_audio = audio_spikes and any(abs(spike - cur_time) < 0.5 for spike in audio_spikes)
+
+        if diff < motion_thresh and not has_audio:
+            low_motion_streak += 1
+        else:
+            low_motion_streak = 0  # reset if motion or audio active
+
+        if low_motion_streak >= cooldown_frames:
             break
 
         total_extend += frame_time
-        prev_gray = gray
 
     cap.release()
     return min(end + total_extend, end + max_extend)
@@ -271,7 +290,15 @@ def extract_highlight_clips(
         score = motion * 0.7 + density * 0.5 + audio_bonus * 0.5
 
         # Dynamic extension to avoid cutting off shots
-        extended_end = extend_scene_to_motion_end(video_path, start, end, max_extend=max_len - duration)
+        extended_end = extended_end = extend_scene_to_motion_end(
+            video_path,
+            start,
+            end,
+            max_extend=max_len - duration,
+            motion_thresh=5.0,
+            cooldown_frames=10,
+            audio_spikes=audio_spikes
+        )
 
         seg_start = max(0, start - pad_before)
         seg_end = min(extended_end, start + max_len)
@@ -313,29 +340,33 @@ def is_valid_mp4(file_path: str) -> bool:
         return False
 
 def save_highlight_clips(video_path: str, segments, output_dir=TEMP_CLIP_DIR) -> List[str]:
+    import ffmpeg
     os.makedirs(output_dir, exist_ok=True)
     saved_paths = []
     base = os.path.splitext(os.path.basename(video_path))[0]
 
     for i, (start, end) in enumerate(segments):
+        out_path = os.path.join(output_dir, f"{base}_clip_{i+1}.mp4")
+        duration = end - start
         try:
-            out_path = os.path.join(output_dir, f"{base}_clip_{i+1}.mp4")
-
-            # ✅ Re-encode for stable timestamps + CFR
-            subprocess.run([
-                "ffmpeg",
-                "-ss", str(start), "-to", str(end),
-                "-i", video_path,
-                "-c:v", "libx264", "-preset", "fast", "-crf", "23",  # re-encode video
-                "-c:a", "aac", "-b:a", "128k",                       # re-encode audio
-                "-r", "30", "-vsync", "cfr",                        # force constant frame rate
-                "-y", out_path
-            ], check=True)
-
+            (
+                ffmpeg
+                .input(video_path, ss=start, t=duration)
+                .output(
+                    out_path,
+                    vcodec='libx264',
+                    preset='fast',
+                    crf=23,
+                    acodec='aac',
+                    audio_bitrate='128k',
+                    movflags='faststart'
+                )
+                .overwrite_output()
+                .run(quiet=True)
+            )
             saved_paths.append(out_path)
-        except Exception as e:
-            print(f"⚠️ Failed to save clip {i+1} from {video_path}: {e}")
-
+        except ffmpeg.Error as e:
+            print(f"⚠️ Failed to save clip {i+1} from {video_path}: {e.stderr.decode()}")
     return saved_paths
 
 
@@ -357,8 +388,9 @@ def high_school_highlights(full_name: str, class_year: str, max_videos: int = 15
     query = random.choice(query_variants)
 
     exclude_keywords = [
-        "interview", "press conference", "announcement", "commitment",
-        "speaks", "talks", "podcast", "intro", "recap", "analysis", "one-on-one"
+        "interview", "press conference", "announcement", "commitment", "docuseries", "mic", "mic'd"
+        "speaks", "talks", "podcast", "intro", "recap", "analysis", "one-on-one", "Interview", "story",
+        f"{full_name.lower()}:", "recruitment"
     ]
     full_game_keywords = [
         "full game", "vs", "v.", "replay", "preview", "matchup", "team"
@@ -425,8 +457,6 @@ def high_school_highlights(full_name: str, class_year: str, max_videos: int = 15
 
     return selected
 
-
-
 def generate_high_school_highlights(full_name: str, class_year: str, max_videos=15, top_k_per_video=3) -> List[str]:
     urls = high_school_highlights(full_name, class_year, max_videos=max_videos)
     if not urls:
@@ -480,57 +510,67 @@ def make_final_reel(clips: List[str], output_path: str) -> str:
     if not clips:
         raise ValueError("No clips provided.")
 
-    inputs = []
-    filters = []
-    xfade_cmds = []
-
-    # Input streams
+    import ffmpeg
+    preprocessed = []
     for i, clip in enumerate(clips):
-        inputs.extend(["-i", clip])
-        filters.append(
-            f"[{i}:v]scale=1280:720,setsar=1[v{i}];"
-            f"[{i}:a]aformat=sample_fmts=s16p:sample_rates=44100:channel_layouts=stereo[a{i}]"
+        tmp = clip.replace(".mp4", "_prep.mp4")
+        (
+            ffmpeg
+            .input(clip)
+            .output(
+                tmp,
+                vf='scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1',
+                r=30,
+                vcodec='libx264',
+                preset='fast',
+                crf=23,
+                acodec='aac',
+                audio_bitrate='192k',
+                ac=2
+            )
+            .overwrite_output()
+            .run(quiet=True)
         )
+        preprocessed.append(tmp)
 
-    # --- Dynamic offsets ---
+    # Build xfade via CLI (subprocess) using preprocessed clips
+    inputs = []
+    filter_parts = []
+    last_v, last_a = "[0:v]", "[0:a]"
+    durations = [get_duration(c) for c in preprocessed]
+    cumulative = durations[0]
     offsets = []
-    cur_time = 0
-    for i, clip in enumerate(clips[:-1]):  # skip last
-        dur = get_duration(clip)
-        # offset for xfade: duration minus half fade (0.5s)
-        cur_time += max(0.5, dur - 0.5)
-        offsets.append(cur_time)
+    for d in durations[1:]:
+        offsets.append(round(cumulative - 0.5, 3))  # fade 0.5s
+        cumulative += d - 0.5
 
-    # --- Build xfade/acrossfade chain ---
-    last_v, last_a = "[v0]", "[a0]"
-    for i in range(1, len(clips)):
-        offset = offsets[i - 1]
-        xfade_cmds.append(
-            f"{last_v}[v{i}]xfade=transition=fade:duration=0.5:offset={offset}[v{i}out];"
-            f"{last_a}[a{i}]acrossfade=d=0.5[a{i}out]"
+    for i, clip in enumerate(preprocessed):
+        inputs.extend(["-i", clip])
+
+    for i in range(1, len(preprocessed)):
+        filter_parts.append(
+            f"{last_v}[{i}:v]xfade=transition=fade:duration=0.5:offset={offsets[i-1]}[v{i}out];"
+            f"{last_a}[{i}:a]acrossfade=d=0.5[a{i}out]"
         )
         last_v, last_a = f"[v{i}out]", f"[a{i}out]"
 
-    filter_complex = ";".join(filters + xfade_cmds)
+    filter_complex = ";".join(filter_parts)
 
     cmd = [
-        "ffmpeg", "-y",
-        *inputs,
+        "ffmpeg", "-y", *inputs,
         "-filter_complex", filter_complex,
         "-map", last_v, "-map", last_a,
         "-c:v", "libx264",
-        "-pix_fmt", "yuv420p",        # force compatible pixel format
+        "-pix_fmt", "yuv420p",
         "-crf", "23",
         "-preset", "fast",
         "-c:a", "aac",
-        "-b:a", "192k",               # explicit audio bitrate
-        "-shortest",                  # in case audio/video mismatch
+        "-b:a", "192k",
+        "-shortest",
         output_path
     ]
-
     subprocess.run(cmd, check=True)
     return output_path
-
 
 
 # -------------------------------

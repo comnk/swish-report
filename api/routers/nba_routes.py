@@ -334,7 +334,7 @@ def get_nba_player_videos(player_id: int, background_tasks: BackgroundTasks):
 
 
 @router.post("/players/submit-player", response_model=Dict)
-async def submit_high_school_player(submission: PlayerSubmission):
+async def submit_nba_player(submission: PlayerSubmission):
     try:
         player_info = await insert_nba_player(
             submission.name,
