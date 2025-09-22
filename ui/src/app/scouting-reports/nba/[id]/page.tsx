@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Navigation from "@/components/navigation";
 import CommentsWrapper from "@/components/comments/comments-wrapper";
+import GenerateHighlightButton from "@/components/generate-highlight-reel";
 
 type Params = Promise<{ id: string }>;
 
@@ -163,6 +164,9 @@ export default async function PlayerPage({ params }: { params: Params }) {
               </div>
             </div>
           </div>
+
+          {/* Highlight Reel Button */}
+          <GenerateHighlightButton player={player} />
 
           {/* Highlight Videos */}
           {videos.length > 0 && (

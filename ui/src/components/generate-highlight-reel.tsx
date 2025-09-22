@@ -1,29 +1,33 @@
 "use client"; // THIS IS REQUIRED
 
 import React from "react";
-import { HighSchoolPlayer } from "@/types/player";
+import { HighSchoolPlayer, NBAPlayer } from "@/types/player";
 
 interface Props {
-  player: HighSchoolPlayer;
+  player: HighSchoolPlayer | NBAPlayer;
 }
 
 export default function GenerateHighlightButton({ player }: Props) {
   const handleClick = async () => {
     try {
-      const res = await fetch(
-        `http://localhost:8000/high-school/prospects/${player.id}/reel`,
-        { method: "GET" }
-      );
+      const endpoint =
+        "school" in player
+          ? `http://localhost:8000/high-school/prospects/${player.id}/reel`
+          : `http://localhost:8000/nba/players/${player.id}/reel`;
+
+      const res = await fetch(endpoint, { method: "GET" });
       if (!res.ok) throw new Error("Failed to generate reel");
 
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
+
       const a = document.createElement("a");
       a.href = url;
       a.download = `${player.full_name.replace(" ", "_")}_highlight.mp4`;
       document.body.appendChild(a);
       a.click();
       a.remove();
+
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);

@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from core.db import get_db_connection
 from utils.hs_helpers import get_youtube_videos
-from utils.highlight_reel_helpers import generate_high_school_highlights, make_final_reel
+from utils.highlight_reel_helpers import make_final_reel
+from utils.high_school_highlight_reels import generate_high_school_highlights
 from scripts.insertion.high_school.insert_missing_hs_player import insert_hs_player, create_hs_player_analysis
 from typing import List, Dict, Optional
 
@@ -209,7 +210,7 @@ def get_high_school_player_videos(player_id: int):
             
 
 @router.get("/prospects/{player_id}/reel")
-def get_high_school_player_reel(player_id: int, background_tasks: BackgroundTasks):
+def get_high_school_player_reel(player_id: int):
     select_sql = """
         SELECT full_name, class_year
         FROM players

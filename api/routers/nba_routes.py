@@ -1,6 +1,7 @@
-import json, math
+import json, os, random, traceback, math
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi.responses import FileResponse
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 from typing import List, Optional, Dict
@@ -8,11 +9,21 @@ from typing import List, Optional, Dict
 from core.db import get_db_connection
 from utils.nba_helpers import get_nba_youtube_videos, refresh_player_videos, fetch_nba_player_stats, handle_name
 from utils.helpers import parse_json_list
+from utils.nba_highlight_reels import generate_nba_highlights
+from utils.highlight_reel_helpers import make_final_reel, FINAL_DIR
 from scripts.insertion.nba.insert_missing_nba_player import insert_nba_player, create_nba_player_analysis
 
 router = APIRouter()
 
 CACHE_EXPIRY_HOURS = 6
+
+DOWNLOAD_DIR = "downloads"
+TEMP_CLIP_DIR = "highlights"
+FINAL_DIR = "final_reels"
+
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+os.makedirs(TEMP_CLIP_DIR, exist_ok=True)
+os.makedirs(FINAL_DIR, exist_ok=True)
 
 class PlayerSubmission(BaseModel):
     name: str
@@ -332,6 +343,45 @@ def get_nba_player_videos(player_id: int, background_tasks: BackgroundTasks):
         if 'cursor' in locals(): cursor.close()
         if 'conn' in locals(): conn.close()
 
+@router.post("/players/{player_id}/reel")
+def get_high_school_player_reel(player_id: int):
+    select_sql = """
+        SELECT full_name
+        FROM players
+        WHERE player_uid = %s;
+    """
+    conn, cursor = None, None
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(select_sql, (player_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Player not found")
+        full_name, class_year = row["full_name"], row["class_year"]
+
+        # --- generate highlights across multiple videos ---
+        try:
+            clips = generate_nba_highlights(full_name, class_year, max_videos=5, top_k_per_video=3)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+
+        final_filename = f"{full_name.replace(' ', '_')}_{random.randint(1000,9999)}_highlight.mp4"
+        final_path = os.path.join(FINAL_DIR, final_filename)
+        make_final_reel(clips, output_path=final_path)
+
+        return FileResponse(final_path, filename=final_filename, media_type="video/mp4")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("🔥 Highlight reel error:", str(e))
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Internal server error generating highlight reel")
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 @router.post("/players/submit-player", response_model=Dict)
 async def submit_nba_player(submission: PlayerSubmission):
