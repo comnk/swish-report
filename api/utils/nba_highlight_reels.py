@@ -20,9 +20,9 @@ def nba_highlights(full_name: str, max_videos: int = 15) -> List[str]:
         "interview", "press conference", "announcement", "commitment", "docuseries",
         "mic", "mic'd", "speaks", "talks", "podcast", "intro", "recap", "analysis",
         "one-on-one", "interview", "story", f"{full_name.lower()}:", "recruitment",
-        "recruiting", "tryout", "invite", "breakdown"
+        "recruiting", "tryout", "invite", "breakdown", "reveals", "tries"
     ]
-    full_game_keywords = ["vs", "v.", "replay", "preview", "matchup", "team"]
+    full_game_keywords = ["full game", "vs", "v.", "replay", "preview", "matchup", "team"]
 
     candidate_videos = []
     highlight_videos = []
@@ -56,7 +56,7 @@ def nba_highlights(full_name: str, max_videos: int = 15) -> List[str]:
             score_name = fuzz.partial_ratio(full_name.lower(), title)
 
             # ✅ If "highlights" in title, mark for guaranteed inclusion
-            if "highlights" in title:
+            if "highlights" in title or "plays" in title:
                 highlight_videos.append((score_name, video_id, title))
             else:
                 candidate_videos.append((score_name, video_id, title))
@@ -101,7 +101,11 @@ def nba_highlights(full_name: str, max_videos: int = 15) -> List[str]:
 
     return selected
 
-def generate_nba_highlights(full_name: str, max_videos=15, top_k_per_video=3) -> List[str]:
+def generate_nba_highlights(full_name: str, max_videos=15, top_k_per_video=3, max_duration: int = 1200) -> List[str]:
+    """
+    Generate highlight clips for an NBA player.
+    Skips long or low-motion videos to avoid wasting resources.
+    """
     urls = nba_highlights(full_name, max_videos=max_videos)
     if not urls:
         raise ValueError("No videos found for this player.")
@@ -112,32 +116,39 @@ def generate_nba_highlights(full_name: str, max_videos=15, top_k_per_video=3) ->
         video_path = None
         try:
             video_path = download_youtube_video(url, output_dir=DOWNLOAD_DIR)
-            duration = get_duration(video_path)
 
-            # Quick early check for dead videos (first 10 seconds)
-            avg_motion = motion_score(video_path, 0, min(10, duration))
-            if avg_motion < 0.05:
-                print(f"⚠️ Skipping dead video: {url}")
+            # 🔹 Duration guard (skip > 20 min, or whatever you set)
+            duration = get_duration(video_path)
+            if duration > max_duration:
+                print(f"⚠️ Skipping long video ({duration/60:.1f} min): {url}")
                 cleanup_files([video_path])
                 continue
 
+            # 🔹 Early "dead video" check (low motion in first 10s)
+            avg_motion = motion_score(video_path, 0, min(10, duration))
+            if avg_motion < 0.05:
+                print(f"⚠️ Skipping dead/low-motion video: {url}")
+                cleanup_files([video_path])
+                continue
+
+            # 🔹 Extract highlight segments
             segments = extract_highlight_clips(video_path, top_k=top_k_per_video)
 
-            # Guarantee at least one segment per video
+            # Fallback: guarantee at least one short clip if video isn't empty
             if not segments and duration > 2:
                 segments = [(0, min(5, duration))]
 
+            # Save extracted highlight clips
             clips = save_highlight_clips(video_path, segments, output_dir=TEMP_CLIP_DIR)
             all_clips.extend(clips)
 
-            cleanup_files([video_path])
-
         except Exception as e:
             print(f"⚠️ Error processing {url}: {e}")
+        finally:
             if video_path:
-                cleanup_files([video_path])
+                cleanup_files([video_path])  # 🔹 always clean up
 
-    # Deduplicate by near-duplicate frames (optional)
+    # Deduplicate + shuffle
     unique_clips = deduplicate_clips(all_clips)
     random.shuffle(unique_clips)
 

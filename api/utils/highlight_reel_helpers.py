@@ -40,9 +40,9 @@ def download_youtube_video(url: str, output_dir: str = DOWNLOAD_DIR) -> str:
         result = subprocess.run(
             [
                 "yt-dlp",
-                "-f", "bestvideo[ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/mp4",
+                "-f", "bv*[vcodec^=avc1][height<=720]+ba/b[height<=720]",
                 "--merge-output-format", "mp4",
-                "--recode-video", "mp4",  # ensure valid MP4
+                "--recode-video", "mp4",
                 "--restrict-filenames",
                 "-o", filename_template,
                 url

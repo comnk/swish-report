@@ -343,8 +343,8 @@ def get_nba_player_videos(player_id: int, background_tasks: BackgroundTasks):
         if 'cursor' in locals(): cursor.close()
         if 'conn' in locals(): conn.close()
 
-@router.post("/players/{player_id}/reel")
-def get_high_school_player_reel(player_id: int):
+@router.get("/players/{player_id}/reel")
+def get_nba_player_reel(player_id: int):
     select_sql = """
         SELECT full_name
         FROM players
@@ -359,11 +359,11 @@ def get_high_school_player_reel(player_id: int):
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Player not found")
-        full_name, class_year = row["full_name"], row["class_year"]
+        full_name = row["full_name"]
 
         # --- generate highlights across multiple videos ---
         try:
-            clips = generate_nba_highlights(full_name, class_year, max_videos=5, top_k_per_video=3)
+            clips = generate_nba_highlights(full_name, max_videos=5, top_k_per_video=3)
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
 
@@ -383,7 +383,7 @@ def get_high_school_player_reel(player_id: int):
         if cursor: cursor.close()
         if conn: conn.close()
 
-@router.post("/players/submit-player", response_model=Dict)
+@router.get("/players/submit-player", response_model=Dict)
 async def submit_nba_player(submission: PlayerSubmission):
     try:
         player_info = await insert_nba_player(
