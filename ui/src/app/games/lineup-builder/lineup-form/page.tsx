@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Court from "@/components/lineup-builder/lineup-builder-court";
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/ui/navigation";
 
 export default function LineupBuilderForm() {
   const router = useRouter();

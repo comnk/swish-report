@@ -1,5 +1,5 @@
 import CommentsWrapper from "@/components/comments/comments-wrapper";
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/ui/navigation";
 
 export default function CollegePlayer() {
   const player = { id: "0" };

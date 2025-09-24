@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Navigation from "@/components/navigation";
-import HeroSection from "@/components/hero-section";
-import FeaturesSection from "@/components/features-section";
-import StatsSection from "@/components/stats-section";
-import CTASection from "@/components/cta-section";
+import Navigation from "@/components/ui/navigation";
+import HeroSection from "@/components/landing-page/hero-section";
+import FeaturesSection from "@/components/landing-page/features-section";
+import StatsSection from "@/components/landing-page/stats-section";
+import CTASection from "@/components/landing-page/cta-section";
 
 export default function Home() {
   const router = useRouter();

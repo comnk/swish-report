@@ -7,7 +7,7 @@ import {
   DragEndEvent,
   DragStartEvent,
 } from "@dnd-kit/core";
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/ui/navigation";
 import LineupSlot from "@/components/lineup-builder/lineup-builder-slot";
 import PlayerCard from "@/components/lineup-builder/lineup-builder-card";
 import { NBAPlayer } from "@/types/player";

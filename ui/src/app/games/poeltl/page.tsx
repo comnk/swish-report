@@ -1,7 +1,7 @@
 "use client";
 
-import Navigation from "@/components/navigation";
-import PlayerSearchPoeltl from "@/components/player-search-poeltl";
+import Navigation from "@/components/ui/navigation";
+import PlayerSearchPoeltl from "@/components/poeltl/player-search-poeltl";
 import { NBAPlayer } from "@/types/player";
 import { useEffect, useState } from "react";
 

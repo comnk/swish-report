@@ -1,7 +1,7 @@
 import { HighSchoolPlayer } from "@/types/player";
-import GenerateHighlightButton from "@/components/generate-highlight-reel";
+import GenerateHighlightButton from "@/components/player-pages/generate-highlight-reel";
 import { notFound } from "next/navigation";
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/ui/navigation";
 import CommentsWrapper from "@/components/comments/comments-wrapper";
 import {
   MapPin,

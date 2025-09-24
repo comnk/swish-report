@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ExternalLink, AlertCircle } from "lucide-react";
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/ui/navigation";
 
 export default function SubmitPlayerPage() {
   const router = useRouter();

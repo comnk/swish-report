@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Flame, CheckCircle } from "lucide-react";
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/ui/navigation";
 
 export default function SubmitHotTakePage() {
   const router = useRouter();

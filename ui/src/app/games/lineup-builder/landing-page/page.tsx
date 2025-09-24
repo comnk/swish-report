@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/ui/navigation";
 
 export default function LineupBuilderLandingPage() {
   return (

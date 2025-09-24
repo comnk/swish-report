@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/ui/navigation";
 
 interface ScoutingReport {
   overallScore: number;

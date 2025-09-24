@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Navigation from "@/components/navigation";
-import PlayerGrid from "@/components/player-grid";
-import PlayerSearch from "@/components/player-search";
+import Navigation from "@/components/ui/navigation";
+import PlayerGrid from "@/components/player-pages/player-grid";
+import PlayerSearch from "@/components/player-pages/player-search";
 import { NBAPlayer } from "@/types/player";
 
 function shuffleArray<T>(array: T[]): T[] {

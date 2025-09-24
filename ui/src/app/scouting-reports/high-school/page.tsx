@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Navigation from "@/components/navigation";
-import PlayerSearch from "@/components/player-search";
-import PlayerGrid from "@/components/player-grid";
+import Navigation from "@/components/ui/navigation";
+import PlayerSearch from "@/components/player-pages/player-search";
+import PlayerGrid from "@/components/player-pages/player-grid";
 import { HighSchoolPlayer } from "@/types/player";
 
 // Fisher-Yates shuffle

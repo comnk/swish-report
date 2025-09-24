@@ -1,4 +1,4 @@
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/ui/navigation";
 
 export default function CollegePage() {
   return (

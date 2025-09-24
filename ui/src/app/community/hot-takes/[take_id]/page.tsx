@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/ui/navigation";
 import CommentsSection from "@/components/comments/threaded-comments";
 
 type HotTake = {

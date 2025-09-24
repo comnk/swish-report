@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/ui/navigation";
 
 interface SignupResponse {
   access_token?: string;

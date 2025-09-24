@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/ui/navigation";
 
 type HotTake = {
   take_id: number;

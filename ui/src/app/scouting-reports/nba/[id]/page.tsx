@@ -10,9 +10,9 @@ import {
   Star,
   Target,
 } from "lucide-react";
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/ui/navigation";
 import CommentsWrapper from "@/components/comments/comments-wrapper";
-import GenerateHighlightButton from "@/components/generate-highlight-reel";
+import GenerateHighlightButton from "@/components/player-pages/generate-highlight-reel";
 
 type Params = Promise<{ id: string }>;
 

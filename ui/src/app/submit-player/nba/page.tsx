@@ -1,6 +1,6 @@
 "use client";
 
-import Navigation from "@/components/navigation";
+import Navigation from "@/components/ui/navigation";
 import { AlertCircle, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
