@@ -198,7 +198,7 @@ def detect_scenes(video_path: str, threshold: float = 30.0):  # Increased thresh
         scene_list = scene_manager.get_scene_list()
         
         # Limit number of scenes to prevent memory issues
-        max_scenes = 50
+        max_scenes = 75
         if len(scene_list) > max_scenes:
             print(f"⚠️ Too many scenes detected ({len(scene_list)}), using first {max_scenes}")
             scene_list = scene_list[:max_scenes]
