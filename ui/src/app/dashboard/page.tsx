@@ -37,12 +37,29 @@ export default function Dashboard() {
         return;
       }
 
+      // Decode JWT to check expiration
       try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        const exp = payload.exp * 1000; // convert to milliseconds
+        if (Date.now() > exp) {
+          setError("Session expired. Please log in again.");
+          localStorage.clear();
+          window.location.href = "/login";
+          return;
+        }
+      } catch (err) {
+        console.error("Invalid token:", err);
+        setError("Invalid session. Please log in again.");
+        localStorage.clear();
+        window.location.href = "/login";
+        return;
+      }
+
+      try {
+        // Fetch lineups
         const lineupRes = await fetch(
           `http://localhost:8000/user/lineup-builder/${user_email}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
 
         if (!lineupRes.ok) {
@@ -51,7 +68,6 @@ export default function Dashboard() {
         }
 
         const lineupData = await lineupRes.json();
-
         const parsedLineups = lineupData.map((lineup: Lineup) => ({
           ...lineup,
           scouting_report:
@@ -59,14 +75,12 @@ export default function Dashboard() {
               ? JSON.parse(lineup.scouting_report)
               : lineup.scouting_report,
         }));
-
         setLineups(parsedLineups);
 
+        // Fetch hot takes
         const hotTakeRes = await fetch(
           `http://localhost:8000/user/hot-takes/${user_email}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
 
         if (!hotTakeRes.ok) {

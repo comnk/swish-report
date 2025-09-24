@@ -3,9 +3,9 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from core.db import get_db_connection
-import jwt
-import os
+import jwt, os
 from datetime import datetime, timedelta
+from typing import Optional
 from starlette.responses import RedirectResponse
 from core.config import set_google_oauth
 
@@ -14,7 +14,7 @@ router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = os.getenv("JWT_SECRET")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 1
+ACCESS_TOKEN_EXPIRE_HOURS = 24
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
@@ -27,6 +27,11 @@ class SignupRequest(BaseModel):
     username: str
     email: EmailStr
     password: str
+
+class UpdateRequest(BaseModel):
+    username: Optional[str] = None
+    email: EmailStr
+    password: Optional[str] = None
 
 # ----- Helpers -----
 def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)):
@@ -146,3 +151,51 @@ def get_dashboard(current_user: dict = Depends(get_current_user)):
         "email": current_user["email"],
         "created_at": current_user["created_at"]
     }
+
+# Update Profile
+@router.put("/update-profile")
+def update_account(user_info: UpdateRequest, current_user: dict = Depends(get_current_user)):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    fields, values = [], []
+
+    if user_info.username:
+        fields.append("username=%s")
+        values.append(user_info.username)
+    if user_info.email:
+        fields.append("email=%s")
+        values.append(user_info.email)
+    if user_info.password:
+        hashed_pw = pwd_context.hash(user_info.password)
+        fields.append("password_hash=%s")
+        values.append(hashed_pw)
+
+    if not fields:
+        cursor.close()
+        conn.close()
+        return {"message": "No changes provided"}
+
+    update_sql = f"UPDATE users SET {', '.join(fields)} WHERE user_id=%s"
+    values.append(current_user["user_id"])
+
+    cursor.execute(update_sql, tuple(values))
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+    return {"message": "Profile updated successfully"}
+
+
+# ----- Delete Profile -----
+@router.delete("/delete-profile")
+def delete_account(current_user: dict = Depends(get_current_user)):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("DELETE FROM users WHERE user_id=%s", (current_user["user_id"],))
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+    return {"message": "Account deleted successfully"}
