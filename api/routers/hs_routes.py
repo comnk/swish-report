@@ -35,6 +35,7 @@ def get_highschool_prospects():
         p.player_uid,
         p.full_name,
         p.class_year,
+        pi.image_url,
         hspr.position,
         hspr.school_name,
         hspr.height,
@@ -48,25 +49,49 @@ def get_highschool_prospects():
         ON hspr.player_uid = p.player_uid
     LEFT JOIN ai_generated_high_school_evaluations AS ai
         ON ai.player_uid = p.player_uid
+    LEFT JOIN (
+        SELECT pi1.player_uid, pi1.image_url
+        FROM player_images pi1
+        WHERE pi1.image_type = 'high_school'
+          AND (pi1.image_url LIKE '%.jpg%' OR pi1.image_url LIKE '%.jpeg%' OR pi1.image_url LIKE '%.png%' OR pi1.image_url LIKE '%.webp%')
+          AND pi1.image_id = (
+              SELECT pi2.image_id
+              FROM player_images pi2
+              WHERE pi2.player_uid = pi1.player_uid
+                AND pi2.image_type = 'high_school'
+                AND (pi2.image_url LIKE '%.jpg%' OR pi2.image_url LIKE '%.jpeg%' OR pi2.image_url LIKE '%.png%' OR pi2.image_url LIKE '%.webp%')
+              ORDER BY RAND()
+              LIMIT 1
+          )
+    ) AS pi ON pi.player_uid = p.player_uid
     WHERE p.class_year IS NOT NULL
-    AND hspr.source = (
-        SELECT source
-        FROM high_school_player_rankings h2
-        WHERE h2.player_uid = p.player_uid
-        ORDER BY FIELD(h2.source, '247sports', 'espn', 'rivals')  -- priority order
-        LIMIT 1
-    );
+      AND p.current_level = 'HS'
+      AND hspr.source = (
+          SELECT source
+          FROM high_school_player_rankings h2
+          WHERE h2.player_uid = p.player_uid
+          ORDER BY FIELD(h2.source, '247sports', 'espn', 'rivals')
+          LIMIT 1
+      );
     """
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+
+        # just in case for long URLs
+        cursor.execute("SET SESSION group_concat_max_len = 1000000;")
+
         cursor.execute(select_sql)
         rows = cursor.fetchall()
         cursor.close()
         conn.close()
 
-        # Parse JSON fields
         for row in rows:
+            img_url = row.get("image_url")
+            if not img_url or not img_url.startswith("http"):
+                row["image_url"] = None
+
             for field, default in [
                 ("strengths", ["Scoring", "Athleticism", "Court Vision"]),
                 ("weaknesses", ["Defense", "Consistency"])
@@ -80,12 +105,13 @@ def get_highschool_prospects():
                 elif value is None:
                     row[field] = default
 
-            # Rename player_uid to id for frontend compatibility
             row["id"] = row.pop("player_uid")
 
         return rows
 
     except Exception as e:
+        import traceback
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -104,22 +130,39 @@ def get_highschool_player(player_id: int):
         COALESCE(ai.rating, 85) AS overallRating,
         COALESCE(ai.strengths, JSON_ARRAY('Scoring', 'Athleticism', 'Court Vision')) AS strengths,
         COALESCE(ai.weaknesses, JSON_ARRAY('Defense', 'Consistency')) AS weaknesses,
-        COALESCE(ai.ai_analysis, 'A highly talented high school prospect with excellent scoring ability and strong athletic traits.') AS aiAnalysis
+        COALESCE(ai.ai_analysis, 'A highly talented high school prospect with excellent scoring ability and strong athletic traits.') AS aiAnalysis,
+        pi.image_url
     FROM players AS p
     INNER JOIN high_school_player_rankings AS hspr ON hspr.player_uid = p.player_uid
     LEFT JOIN ai_generated_high_school_evaluations AS ai ON ai.player_uid = p.player_uid
+    LEFT JOIN (
+        SELECT t1.player_uid, t1.image_url
+        FROM player_images t1
+        JOIN (
+            SELECT player_uid, image_id
+            FROM player_images
+            WHERE image_type = 'high_school'
+              AND (image_url LIKE '%.jpg%' OR image_url LIKE '%.jpeg%' OR image_url LIKE '%.png%' OR image_url LIKE '%.webp%')
+            ORDER BY RAND()
+        ) t2 ON t1.player_uid = t2.player_uid AND t1.image_id = t2.image_id
+    ) AS pi ON pi.player_uid = p.player_uid
     WHERE p.player_uid = %s AND p.class_year IS NOT NULL;
     """
+
+    conn = cursor = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True, buffered=True)  # <-- key fix
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute(select_sql, (player_id,))
         row = cursor.fetchone()
 
         if not row:
             raise HTTPException(status_code=404, detail="Player not found")
 
-        # Ensure JSON fields are Python lists
+        img_url = row.get("image_url")
+        if not img_url or not img_url.startswith("http"):
+            row["image_url"] = None
+
         for field, default in [
             ("strengths", ["Scoring", "Athleticism", "Court Vision"]),
             ("weaknesses", ["Defense", "Consistency"])
@@ -133,20 +176,22 @@ def get_highschool_player(player_id: int):
             elif value is None:
                 row[field] = default
 
-        # Rename player_uid to id
         row["id"] = row.pop("player_uid")
         row["school"] = row.pop("school_name")
         row["class"] = row.pop("class_year")
-        
+
         return row
 
     except Exception as e:
+        import traceback
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if 'cursor' in locals():
+        if cursor:
             cursor.close()
-        if 'conn' in locals():
+        if conn:
             conn.close()
+
 
 @router.get("/prospects/{player_id}/videos")
 def get_high_school_player_videos(player_id: int):

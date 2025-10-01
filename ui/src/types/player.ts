@@ -6,11 +6,12 @@ export interface HighSchoolPlayer {
     weight: string;
     school: string;
     class?: string;
-    stars: number,
+    stars: number;
     overallRating: number;
     strengths: string[];
     weaknesses: string[];
     aiAnalysis: string;
+    image_url: string;
 }
 
 export interface CollegePlayer {
@@ -39,4 +40,5 @@ export interface NBAPlayer {
     strengths: string[];
     weaknesses: string[];
     aiAnalysis: string;
+    image_url?: string;
 }

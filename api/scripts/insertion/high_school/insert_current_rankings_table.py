@@ -60,6 +60,11 @@ async def load_current_player_rankings_async():
     VALUES (%s, %s, %s)
     ON DUPLICATE KEY UPDATE current_level = VALUES(current_level), class_year = VALUES(class_year);
     """
+    
+    insert_player_image_sql = """
+    INSERT INTO player_images (player_uid, image_url, image_type)
+    VALUES (%s, %s, %s)
+    """
 
     # Step 1: Fetch all existing players per class_year (to avoid many DB queries)
     existing_players_by_year = {}
@@ -69,7 +74,7 @@ async def load_current_player_rankings_async():
 
     # Step 2: For each player in all_rankings, find matching player_uid or insert new player
     ranking_rows = []
-    for (source, class_year, player_rank, grade, stars, player_name,
+    for (source, class_year, player_rank, player_image_link, grade, stars, player_name,
         player_link, position, height, weight,
         school_name, city, state, location_type, finalized) in all_rankings:
 
@@ -78,9 +83,11 @@ async def load_current_player_rankings_async():
         if not player_uid:
             cursor.execute(insert_player_sql, (player_name, class_year, 'HS'))
             player_uid = cursor.lastrowid
-            # Add newly inserted player to cache for future matches in this run
             existing_players_by_year.setdefault(int(class_year), []).append((player_uid, player_name))
 
+        if player_image_link:
+            cursor.execute(insert_player_image_sql, (player_uid, player_image_link, "high_school"))
+        
         ranking_rows.append((
             player_uid, source, class_year, clean_player_rank(player_rank),
             grade, stars, player_link, position, height, weight,

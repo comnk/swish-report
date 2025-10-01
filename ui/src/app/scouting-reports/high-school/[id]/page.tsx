@@ -49,12 +49,22 @@ export default async function PlayerPage({ params }: { params: Params }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center space-x-6">
-              <div className="w-24 h-24 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                {player.full_name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")}
+              {/* Player Image */}
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-2xl font-bold">
+                {player.image_url ? (
+                  <img
+                    src={player.image_url}
+                    alt={player.full_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  player.full_name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                )}
               </div>
+
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
                   {player.full_name}
@@ -156,7 +166,7 @@ export default async function PlayerPage({ params }: { params: Params }) {
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
-                    ></iframe>
+                    />
                   </div>
                 ))}
               </div>

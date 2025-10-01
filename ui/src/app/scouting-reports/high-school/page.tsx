@@ -47,6 +47,7 @@ export default function HighSchoolPage() {
             school: p.school_name,
             class: p.class_year?.toString() ?? "",
             height: p.height,
+            weight: p.weight ?? "",
             stars: p.stars ?? 4,
             overallRating: p.overallRating ?? 85,
             strengths: p.strengths ?? [
@@ -58,7 +59,7 @@ export default function HighSchoolPage() {
             aiAnalysis:
               p.aiAnalysis ??
               "A highly talented high school prospect with excellent scoring ability and strong athletic traits.",
-            weight: "",
+            image_url: p.image_url ?? "/images/default-player.png",
           })
         );
 

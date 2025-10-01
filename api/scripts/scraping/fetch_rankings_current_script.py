@@ -7,9 +7,25 @@ async def fetch_247_sports_info(class_years, browser):
     try:
         for class_year in class_years:
             url = f'https://247sports.com/season/{class_year}-basketball/recruitrankings/'
-            await page.goto(url, wait_until='domcontentloaded', timeout=60000)
-            await page.wait_for_selector("li.rankings-page__list-item", timeout=5000)
+            await page.goto(url, wait_until='domcontentloaded', timeout=120000)
+            await page.wait_for_selector("ul.rankings-page__list", timeout=10000)
 
+            # Scroll to the bottom robustly
+            previous_height = 0
+            scroll_attempts = 0
+            max_scroll_attempts = 30  # safety limit
+            while scroll_attempts < max_scroll_attempts:
+                current_height = await page.evaluate("document.body.scrollHeight")
+                if current_height == previous_height:
+                    scroll_attempts += 1
+                else:
+                    scroll_attempts = 0
+                    previous_height = current_height
+
+                await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                await page.wait_for_timeout(1500)  # wait for lazy-loaded content
+
+            # Extract player data
             players_data = await page.evaluate('''() => {
                 return Array.from(document.querySelectorAll('li.rankings-page__list-item')).map(wrapper => {
                     const aTag = wrapper.querySelector('a');
@@ -17,9 +33,12 @@ async def fetch_247_sports_info(class_years, browser):
                     if (playerLink?.startsWith('/')) {
                         playerLink = 'https://247sports.com' + playerLink;
                     }
+                    const imgTag = wrapper.querySelector('.circle-image-block img');
+                    let playerImageLink = imgTag?.getAttribute('src') || null;
                     return {
                         playerName: aTag?.innerText.trim() || null,
                         playerLink,
+                        playerImageLink,
                         playerRank: wrapper.querySelector('.rank-column .primary')?.innerText.trim() || null,
                         stars: wrapper.querySelectorAll('.rankings-page__star-and-score span.icon-starsolid.yellow').length || 0,
                         grade: parseInt(wrapper.querySelector('.rankings-page__star-and-score .score')?.innerText.trim()) || null,
@@ -38,6 +57,7 @@ async def fetch_247_sports_info(class_years, browser):
                     "247sports",
                     str(class_year),
                     p['playerRank'],
+                    p['playerImageLink'],
                     p['grade'],
                     p['stars'],
                     p['playerName'],
@@ -118,6 +138,7 @@ async def fetch_espn_info(class_year, browser):
                 "espn",
                 str(class_year),
                 data['playerRank'],
+                None,
                 data['grade'],
                 stars,
                 data['playerName'],
@@ -159,6 +180,9 @@ async def fetch_rivals_info(class_year, browser):
                 if (playerLink && playerLink.startsWith("/")) {
                     playerLink = "https://www.on3.com" + playerLink;
                 }
+                
+                const imgTag = wrapper.querySelector("img");
+                let playerImageLink = imgTag ? imgTag.getAttribute("src") : null;
 
                 const rankDd = wrapper.querySelector('dl[aria-labelledby="rank"] dd');
                 const playerRank = rankDd ? rankDd.innerText.trim() : null;
@@ -215,6 +239,7 @@ async def fetch_rivals_info(class_year, browser):
                 return {
                     playerName,
                     playerLink,
+                    playerImageLink,
                     playerRank,
                     grade,
                     stars,
@@ -238,6 +263,7 @@ async def fetch_rivals_info(class_year, browser):
                 "rivals",
                 str(class_year),
                 p['playerRank'],
+                p['playerImageLink'],
                 p['grade'],
                 p['stars'],
                 p['playerName'],
