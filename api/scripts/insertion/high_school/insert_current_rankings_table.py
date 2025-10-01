@@ -1,5 +1,5 @@
 import asyncio
-from scraping.fetch_rankings_current_script import fetch_247_sports_info, fetch_espn_info, fetch_rivals_info
+from scripts.scraping.fetch_rankings_current_script import fetch_247_sports_info, fetch_espn_info, fetch_rivals_info
 from utils.hs_helpers import find_matching_player, clean_player_rank
 from utils.helpers import launch_browser
 from core.db import get_db_connection

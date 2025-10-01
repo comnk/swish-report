@@ -1,4 +1,4 @@
-"use client"; // THIS IS REQUIRED
+"use client";
 
 import React from "react";
 import { HighSchoolPlayer, NBAPlayer } from "@/types/player";

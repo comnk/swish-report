@@ -32,24 +32,21 @@ export default function Dashboard() {
       const user_email = localStorage.getItem("user_email");
 
       if (!token || !user_email) {
-        setError("You must be signed in to view your dashboard.");
-        setLoading(false);
+        localStorage.clear();
+        window.location.href = "/login";
         return;
       }
 
-      // Decode JWT to check expiration
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        const exp = payload.exp * 1000; // convert to milliseconds
+        const exp = payload.exp * 1000;
         if (Date.now() > exp) {
-          setError("Session expired. Please log in again.");
           localStorage.clear();
           window.location.href = "/login";
           return;
         }
       } catch (err) {
         console.error("Invalid token:", err);
-        setError("Invalid session. Please log in again.");
         localStorage.clear();
         window.location.href = "/login";
         return;

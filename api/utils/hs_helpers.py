@@ -200,13 +200,25 @@ def is_rankings_finalized(class_year: int) -> bool:
 def normalize_name(name: str) -> str:
     if not name:
         return ""
-    name = name.lower()
-    # remove jr, sr, ii, iii
+
+    name = name.lower().strip()
+
     name = re.sub(r'\b(jr|sr|ii|iii)\b', '', name)
-    # remove punctuation
+
+    name = re.sub(r'\b([a-z])\.([a-z])\b', r'\1 \2', name)
     name = re.sub(r'[^a-z\s]', '', name)
-    name = re.sub(r'\s+', ' ', name)
-    return name.strip()
+    name = re.sub(r'\s+', ' ', name).strip()
+
+    return name
+
+
+def initials_from_name(name: str) -> str:
+    """Return initials from a normalized name string"""
+    tokens = name.split()
+    if not tokens:
+        return ""
+    return "".join(t[0] for t in tokens)
+
 
 def find_matching_player(existing_players_by_year, class_year, candidate_name, threshold=83):
     """
@@ -214,11 +226,20 @@ def find_matching_player(existing_players_by_year, class_year, candidate_name, t
     Returns player_uid if a sufficiently similar player exists, else None.
     """
     norm_candidate = normalize_name(candidate_name)
+    candidate_initials = initials_from_name(norm_candidate)
+
     best_match = None
     best_score = 0
 
     for player_uid, full_name in existing_players_by_year.get(class_year, []):
-        score = fuzz.token_set_ratio(norm_candidate, normalize_name(full_name))
+        norm_full = normalize_name(full_name)
+        full_initials = initials_from_name(norm_full)
+
+        score = fuzz.token_set_ratio(norm_candidate, norm_full)
+
+        if candidate_initials and candidate_initials == full_initials:
+            score += 10
+
         if score > best_score and score >= threshold:
             best_score = score
             best_match = player_uid
