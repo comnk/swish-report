@@ -213,9 +213,11 @@ def initials_from_name(name: str) -> str:
 
 def find_matching_player(existing_players_by_year, class_year, candidate_name, threshold=83):
     # HARD-CODED SPECIAL CASE
-    if candidate_name.strip().lower() in ["cornelius ingram jr.", "cj ingram"]:
+    if candidate_name.strip().lower() in ["cornelius ingram jr.", "cj ingram"] or candidate_name.strip().lower() in ["johnuel fland", "boogie fland"]:
         for player_uid, full_name in existing_players_by_year.get(class_year, []):
             if full_name.strip().lower() in ["cornelius ingram jr.", "cj ingram"]:
+                return player_uid
+            if full_name.strip().lower() in ["johnuel fland", "boogie fland"]:
                 return player_uid
         return None
 

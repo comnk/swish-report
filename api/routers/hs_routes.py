@@ -31,55 +31,50 @@ class PlayerSubmission(BaseModel):
 @router.get("/prospects", response_model=List[Dict])
 def get_highschool_prospects():
     select_sql = """
+        WITH image_ranked AS (
+        SELECT
+            pi.player_uid,
+            pi.image_url,
+            ROW_NUMBER() OVER (PARTITION BY pi.player_uid ORDER BY RAND()) AS rn
+        FROM player_images pi
+        WHERE pi.image_type = 'high_school'
+    )
     SELECT
-        p.player_uid,
+        p.player_uid AS id,
         p.full_name,
-        p.class_year,
+        p.class_year AS class,
         pi.image_url,
         hspr.position,
-        hspr.school_name,
+        hspr.school_name AS school,
         hspr.height,
+        hspr.weight,
         COALESCE(ai.stars, 4) AS stars,
         COALESCE(ai.rating, 85) AS overallRating,
         COALESCE(ai.strengths, JSON_ARRAY('Scoring', 'Athleticism', 'Court Vision')) AS strengths,
         COALESCE(ai.weaknesses, JSON_ARRAY('Defense', 'Consistency')) AS weaknesses,
         COALESCE(ai.ai_analysis, 'A highly talented high school prospect with excellent scoring ability and strong athletic traits.') AS aiAnalysis
-    FROM players AS p
-    INNER JOIN high_school_player_rankings AS hspr
+    FROM players p
+    INNER JOIN high_school_player_rankings hspr
         ON hspr.player_uid = p.player_uid
-    LEFT JOIN ai_generated_high_school_evaluations AS ai
+    LEFT JOIN ai_generated_high_school_evaluations ai
         ON ai.player_uid = p.player_uid
-    LEFT JOIN (
-        SELECT pi1.player_uid, pi1.image_url
-        FROM player_images pi1
-        WHERE pi1.image_type = 'high_school'
-          AND (pi1.image_url LIKE '%.jpg%' OR pi1.image_url LIKE '%.jpeg%' OR pi1.image_url LIKE '%.png%' OR pi1.image_url LIKE '%.webp%')
-          AND pi1.image_id = (
-              SELECT pi2.image_id
-              FROM player_images pi2
-              WHERE pi2.player_uid = pi1.player_uid
-                AND pi2.image_type = 'high_school'
-                AND (pi2.image_url LIKE '%.jpg%' OR pi2.image_url LIKE '%.jpeg%' OR pi2.image_url LIKE '%.png%' OR pi2.image_url LIKE '%.webp%')
-              ORDER BY RAND()
-              LIMIT 1
-          )
-    ) AS pi ON pi.player_uid = p.player_uid
+    LEFT JOIN image_ranked pi
+        ON pi.player_uid = p.player_uid AND pi.rn = 1
     WHERE p.class_year IS NOT NULL
-      AND p.current_level = 'HS'
-      AND hspr.source = (
-          SELECT source
-          FROM high_school_player_rankings h2
-          WHERE h2.player_uid = p.player_uid
-          ORDER BY FIELD(h2.source, '247sports', 'espn', 'rivals')
-          LIMIT 1
-      );
+    AND p.current_level = 'HS'
+    AND hspr.source = (
+        SELECT source
+        FROM high_school_player_rankings h2
+        WHERE h2.player_uid = p.player_uid
+        ORDER BY FIELD(h2.source, '247sports', 'espn', 'rivals')
+        LIMIT 1
+    );
     """
 
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # just in case for long URLs
         cursor.execute("SET SESSION group_concat_max_len = 1000000;")
 
         cursor.execute(select_sql)
@@ -104,8 +99,6 @@ def get_highschool_prospects():
                         row[field] = default
                 elif value is None:
                     row[field] = default
-
-            row["id"] = row.pop("player_uid")
 
         return rows
 

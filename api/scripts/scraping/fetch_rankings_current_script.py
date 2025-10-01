@@ -10,22 +10,15 @@ async def fetch_247_sports_info(class_years, browser):
             await page.goto(url, wait_until='domcontentloaded', timeout=120000)
             await page.wait_for_selector("ul.rankings-page__list", timeout=10000)
 
-            # Scroll to the bottom robustly
-            previous_height = 0
-            scroll_attempts = 0
-            max_scroll_attempts = 30  # safety limit
-            while scroll_attempts < max_scroll_attempts:
-                current_height = await page.evaluate("document.body.scrollHeight")
-                if current_height == previous_height:
-                    scroll_attempts += 1
-                else:
-                    scroll_attempts = 0
-                    previous_height = current_height
+            # Scroll each player into view to force image loading
+            players_selector = "li.rankings-page__list-item"
+            players = await page.query_selector_all(players_selector)
+            
+            for player in players:
+                await player.scroll_into_view_if_needed()
+                await page.wait_for_timeout(200)  # small wait to let image load
 
-                await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                await page.wait_for_timeout(1500)  # wait for lazy-loaded content
-
-            # Extract player data
+            # After scrolling all into view, extract data
             players_data = await page.evaluate('''() => {
                 return Array.from(document.querySelectorAll('li.rankings-page__list-item')).map(wrapper => {
                     const aTag = wrapper.querySelector('a');

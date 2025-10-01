@@ -6,7 +6,7 @@ import PlayerSearch from "@/components/player-pages/player-search";
 import PlayerGrid from "@/components/player-pages/player-grid";
 import { HighSchoolPlayer } from "@/types/player";
 
-// Fisher-Yates shuffle
+// Fisher-Yates shuffle (used only once when fetching)
 function shuffleArray<T>(array: T[]): T[] {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -34,36 +34,29 @@ export default function HighSchoolPage() {
 
         const data = await res.json();
 
-        const mapped: HighSchoolPlayer[] = data.map(
-          (
-            p: Partial<HighSchoolPlayer> & {
-              school_name?: string;
-              class_year?: string | number;
-            }
-          ) => ({
-            id: String(p.id),
-            full_name: p.full_name,
-            position: p.position,
-            school: p.school_name,
-            class: p.class_year?.toString() ?? "",
-            height: p.height,
-            weight: p.weight ?? "",
-            stars: p.stars ?? 4,
-            overallRating: p.overallRating ?? 85,
-            strengths: p.strengths ?? [
-              "Scoring",
-              "Athleticism",
-              "Court Vision",
-            ],
-            weaknesses: p.weaknesses ?? ["Defense", "Consistency"],
-            aiAnalysis:
-              p.aiAnalysis ??
-              "A highly talented high school prospect with excellent scoring ability and strong athletic traits.",
-            image_url: p.image_url ?? "/images/default-player.png",
-          })
+        const mapped: HighSchoolPlayer[] = data.map((p: HighSchoolPlayer) => ({
+          id: String(p.id),
+          full_name: p.full_name,
+          position: p.position,
+          school: p.school,
+          class: p.class?.toString() ?? "",
+          height: p.height,
+          weight: String(p.weight) ?? "",
+          stars: p.stars ?? 4,
+          overallRating: p.overallRating ?? 85,
+          strengths: p.strengths ?? ["Scoring", "Athleticism", "Court Vision"],
+          weaknesses: p.weaknesses ?? ["Defense", "Consistency"],
+          aiAnalysis:
+            p.aiAnalysis ??
+            "A highly talented high school prospect with excellent scoring ability and strong athletic traits.",
+          image_url: p.image_url?.trim() || "/images/default-player.png",
+        }));
+
+        const uniquePlayers = Array.from(
+          new Map(mapped.map((p) => [p.id, p])).values()
         );
 
-        setPlayers(shuffleArray(mapped));
+        setPlayers(shuffleArray(uniquePlayers));
       } catch (error) {
         console.error("Failed to fetch high school prospects:", error);
       } finally {
@@ -77,24 +70,27 @@ export default function HighSchoolPage() {
   // Filter logic
   const filteredPlayers = players.filter((player) => {
     const matchesSearch =
-      searchTerm === "" ||
+      !searchTerm ||
       player.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       player.school?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesFilters = (
-      Object.entries(selectedFilters) as [keyof HighSchoolPlayer, string][]
-    ).every(([key, value]) => {
-      if (!value) return true;
-
-      if (value.includes(",")) {
-        const selectedValues = value
-          .split(",")
-          .map((v) => v.trim().toLowerCase());
-        return selectedValues.includes(String(player[key]).toLowerCase());
+    const matchesFilters = Object.entries(selectedFilters).every(
+      ([key, value]) => {
+        if (!value) return true;
+        if (value.includes(",")) {
+          const selectedValues = value
+            .split(",")
+            .map((v) => v.trim().toLowerCase());
+          return selectedValues.includes(
+            String(player[key as keyof HighSchoolPlayer]).toLowerCase()
+          );
+        }
+        return (
+          String(player[key as keyof HighSchoolPlayer]).toLowerCase() ===
+          value.toLowerCase()
+        );
       }
-
-      return String(player[key]).toLowerCase() === value.toLowerCase();
-    });
+    );
 
     return matchesSearch && matchesFilters;
   });
